@@ -12,7 +12,7 @@ router.get("/", async function (req, res, next) {
   // res.send("respond with a resource");
 });
 
-// POST l'utilisateur accepte la charte de bienveillance -----------------------------------------
+// POST l'utilisateur accepte la charte de bienveillance
 router.post("/acceptsGC", async function (req, res) {
   if (!checkBody(req.body, ["token"])) {
     res.json({ result: false, error: "Token is missing" });
