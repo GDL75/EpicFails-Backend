@@ -9,7 +9,8 @@ const userSchema = mongoose.Schema({
     signUpDate: Date,
     avatarURL: String,
     status: String,
-    interests: [String]
+    interests: [String],
+    resetCode: String,
 })
 
 const User = mongoose.model('users', userSchema);

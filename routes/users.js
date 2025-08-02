@@ -7,7 +7,9 @@ const { checkBody } = require("../modules/checkBody");
 
 const bcrypt = require("bcrypt");
 const uid2 = require("uid2");
-const checkEmail = require("../modules/checkEmail")
+const checkEmail = require("../modules/checkEmail");
+
+const nodemailer = require("nodemailer");
 
 // /* GET users listing. */
 // router.get("/", async function (req, res, next) {
@@ -77,7 +79,8 @@ router.post('/signup', async (req, res) => {
         signUpDate: new Date(),
         avatarURL: "",
         status: "Newbie",
-        interests: []
+        interests: [],
+        resetCode: 0
       })
       
       await user.save();
@@ -141,21 +144,141 @@ router.post('/signin', async (req, res) => {
 
 })
 
-// POST - Forgotten password 
-router.post('/resetPassword', async (req, res) => {
+// POST - Send mail verification code to user 
+router.post('/send-code', async (req, res) => {
+  // ↩️ Data-in 
+    const { email } = req.body;
+
+    console.log(email)
+  
+  // ⚙️ Logic
+  try {
+    // 1. Checking that email is valid - Vérifier que l'email est valide
+    if(!checkEmail(email)) {
+      return res.status(400).send({
+        result: false,
+        error: "Invalid email"
+      })
+    }
+
+    // 2. Checking user exists - Vérifier que l'utilisateur existe en bdd
+    const user = await User.findOne({ email })
+    if(!user) {
+      return res.status(400).send({
+        result: false,
+        error: 'User not found'
+      })
+    }
+
+    // 3. Generate random 6-digit code - Générer un code à 6 chiffres aléatoire
+    // Has to be less or equal to 999,999 and greater or equal to 100,000 - doit être sup ou égal à 100,000 et inf ou égal à 999,999
+    const digitCode = Math.floor(Math.random()*(999999-100000+1)+100000);
+
+    console.log()
+
+    // 4. Add digitCode to user info in database - Ajout du code aux infos utilisateurs en bdd
+    // May be deleted if we store code in Redux store - peut être supprimé si on choisit d'enregistrer le code dans le store redux
+    await User.updateOne({ email }, { resetCode: bcrypt.hashSync(digitCode.toString(), 10) });
+
+    // 5. Defining the email content - Définir le contenu de l'email
+    const mailContent = {
+      from: '"EpicFails App" 👾<process.env.GMAIL_ADDRESS>',
+      to: email,
+      subject: 'Votre code de vérification',
+      text: `Votre code de vérification est le suivant: ${digitCode}`
+    }
+
+    // 6. Creating a nodemailer email transporter with Gmail - Créer un transporteur d'email requis par nodemailer via Gmail
+    const transporter = nodemailer.createTransport({
+      service: "gmail",
+      auth: {
+        user: process.env.GMAIL_ADDRESS,
+        pass: process.env.GMAIL_APP_PASSWORD
+      }
+    })
+
+    // 7. Send mail
+    await transporter.sendMail(mailContent);
+    console.log(`✅ Email sent to ${email} with code ${digitCode}`); // A virer en production, security leak
+
+  // ↪️ Data-out
+    res.status(201).send({
+      result: true,
+      message: "Verification code sent!",
+      code: digitCode // Utile uniquement si on stocke le code dans le store Redux plutôt qu'en bdd
+    })
+
+  } catch (err) {
+    res.status(500).send({
+      result: false,
+      error: err.message
+    })
+  }
+})
+
+// POST - Check mail verification code
+router.post('/check-code', async (req, res) => {
+  // ↩️ Data-in 
+    const { email, digitCode } = req.body;
+  
+  // ⚙️ Logic & ↪️ Data-out
+  try {
+    // 1. Check the user exists 
+    const user = await User.findOne({ email })
+    if(!user) {
+      return res.status(400).send({
+        result: false,
+        error: "User not found"
+      })
+    }
+    // 2. Check the code format is valid - vérifier que le format du code est valide
+    if(digitCode <  100000 || digitCode > 999999) {
+      return res.status(400).send({
+        result: false,
+        error: "Invalid code format"
+      })
+    }
+    // 3. Check the code sent by user is equal to the code saved in database - vérifier que le code renseigné par l'utilisateur est conforme au code en bdd           
+    if(!bcrypt.compareSync(digitCode, user.resetCode)) {
+      return res.status(400).send({
+        result: false,
+        error: "Invalid code"
+      })     
+    }
+    res.status(202).send({
+      result: true,
+      error: "Code is valid, password reset allowed"
+    });
+
+  } catch (err) {
+    res.status(500).send({
+      result: false,
+      error: err.message
+    })
+  }
+})
+
+// POST - Reset password
+router.post('/reset-password', async (req, res) => {
   // ↩️ Data-in 
     const { username, password } = req.body;
   
   // ⚙️ Logic & ↪️ Data-out
   try {
-
-
-
-
-
-
-
-
+    // 1. Check user is in database - vérifier que l'utilisateur est en base de données
+    const user = await User.findOne({ username });
+    if(!user) {
+      return res.status(400).send({
+        result: false,
+        error: "User not found"
+      })
+    }
+    // 2. Updating password in database - mise à jour du mdp en bdd
+    await User.updateOne({ username }, { password: bcrypt.hashSync(password, 10)});
+    res.status(201).send({
+      result: true,
+      message: "Password successfully updated!"
+    })
 
   } catch (err) {
     res.status(500).send({

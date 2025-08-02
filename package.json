@@ -16,6 +16,7 @@
     "express": "~4.16.1",
     "mongoose": "^8.16.5",
     "morgan": "~1.9.1",
+    "nodemailer": "^7.0.5",
     "nodemon": "^3.1.10",
     "uid2": "^1.0.0"
   },
