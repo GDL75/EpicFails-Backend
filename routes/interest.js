@@ -2,6 +2,8 @@ const express = require("express");
 const router = express.Router();
 const Interest = require("../models/interest");
 
+// *** À EFFACER *** les centres d'intérêts ne nécessitent finalement pas une collection en bdd
+
 //Post centre d'intérêt
 router.post("/", async (req, res) => {
   try {

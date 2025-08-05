@@ -47,21 +47,21 @@ router.post('/signup', async (req, res) => {
   
   // ⚙️ Logic & ↪️ Data-out
     try {
-      // 1. Checking that all fields are filled -- Vérifier que tous les champs ont été renseignés
+      // 1. Checking that all fields are filled -- Vérifier que tous les champs aient été renseignés
       if(!checkBody(req.body, ["email", "username", "password"])) {
         return res.status(400).send({
                   result: false,
                   error: "Missing or empty fields"
               })
       } 
-      // 2. Checking that email is valid -- Vérifier que l'email est valide
+      // 2. Checking that email is valid -- Vérifier que l'email soit valide
       if(!checkEmail(email)) {
         return res.status(400).send({
                   result: false,
                   error: "Invalid email"
               })
       }
-      // 3. Checking that user is not already signed up -- Vérifier que l'utilisateur n'a pas déjà un compte
+      // 3. Checking that user is not already signed up -- Vérifier que l'utilisateur n'ait pas déjà un compte
       let user = await User.findOne({ username, email })
       if(user) {
         return res.status(400).send({
@@ -107,14 +107,14 @@ router.post('/signin', async (req, res) => {
   
   // ⚙️ Logic & ↪️ Data-out
     try {
-      // 1. Checking that all fields are filled -- Vérifier que tous les champs ont été renseignés
+      // 1. Checking that all fields are filled -- Vérifier que tous les champs aient été renseignés
       if(!checkBody(req.body, ["username", "password"])) {
         return res.status(400).send({
                   result: false,
                   error: "Missing or empty fields"
               })
       } 
-      // 2. Checking that user exists in database  -- Vérifier que l'utilisateur a un compte
+      // 2. Checking that user exists in database  -- Vérifier que l'utilisateur ait un compte
       let user = await User.findOne({ username })
       if(!user) {
         return res.status(400).send({
@@ -122,7 +122,7 @@ router.post('/signin', async (req, res) => {
                   error: "User not found"
               })
       }
-      // 3. Checking that password is valid -- Vérifier que le mot de passe est valide
+      // 3. Checking that password is valid -- Vérifier que le mot de passe soit valide
       if(!bcrypt.compareSync(password, user.password)) {
         return res.status(400).send({
                   result: false,
@@ -153,7 +153,7 @@ router.post('/send-code', async (req, res) => {
   
   // ⚙️ Logic
   try {
-    // 1. Checking that email is valid - Vérifier que l'email est valide
+    // 1. Checking that email is valid - Vérifier que l'email soit valide
     if(!checkEmail(email)) {
       return res.status(400).send({
         result: false,
@@ -231,14 +231,14 @@ router.post('/check-code', async (req, res) => {
         error: "User not found"
       })
     }
-    // 2. Check the code format is valid - vérifier que le format du code est valide
+    // 2. Check the code format is valid - vérifier que le format du code soit valide
     if(digitCode <  100000 || digitCode > 999999) {
       return res.status(400).send({
         result: false,
         error: "Invalid code format"
       })
     }
-    // 3. Check the code sent by user is equal to the code saved in database - vérifier que le code renseigné par l'utilisateur est conforme au code en bdd           
+    // 3. Check the code sent by user is equal to the code saved in database - vérifier que le code renseigné par l'utilisateur soit conforme au code en bdd           
     if(!bcrypt.compareSync(digitCode, user.resetCode)) {
       return res.status(400).send({
         result: false,
@@ -265,7 +265,7 @@ router.post('/reset-password', async (req, res) => {
   
   // ⚙️ Logic & ↪️ Data-out
   try {
-    // 1. Check user is in database - vérifier que l'utilisateur est en base de données
+    // 1. Check user is in database - vérifier que l'utilisateur soit en base de données
     const user = await User.findOne({ username });
     if(!user) {
       return res.status(400).send({
