@@ -62,14 +62,22 @@ router.post('/signup', async (req, res) => {
               })
       }
       // 3. Checking that user is not already signed up -- Vérifier que l'utilisateur n'ait pas déjà un compte
-      let user = await User.findOne({ username, email })
-      if(user) {
+      const isEmailInDB = await User.findOne({ email }) // 🔴
+      if(isEmailInDB) {
         return res.status(400).send({
                   result: false,
                   error: "User already exists"
               })
       }
-      // 4. Adding user to database - Ajout de l'utilisateur à la base de donnée
+      // 4. Checking that username is available -- Vérifier le nom d'utilisateur est disponible
+      let user = await User.findOne({ username })
+      if(user) {
+        return res.status(400).send({
+                  result: false,
+                  error: "Username is already taken"
+        })
+      }
+      // 5. Adding user to database - Ajout de l'utilisateur à la base de donnée
       user = new User({
         username,
         email,
@@ -148,8 +156,6 @@ router.post('/signin', async (req, res) => {
 router.post('/send-code', async (req, res) => {
   // ↩️ Data-in 
     const { email } = req.body;
-
-    console.log(email)
   
   // ⚙️ Logic
   try {
@@ -174,11 +180,10 @@ router.post('/send-code', async (req, res) => {
     // Has to be less or equal to 999,999 and greater or equal to 100,000 - doit être sup ou égal à 100,000 et inf ou égal à 999,999
     const digitCode = Math.floor(Math.random()*(999999-100000+1)+100000);
 
-    console.log()
-
     // 4. Add digitCode to user info in database - Ajout du code aux infos utilisateurs en bdd
     // May be deleted if we store code in Redux store - peut être supprimé si on choisit d'enregistrer le code dans le store redux
     await User.updateOne({ email }, { resetCode: bcrypt.hashSync(digitCode.toString(), 10) });
+    console.log("Reset code was updated in database"); // A VIRER 🔴
 
     // 5. Defining the email content - Définir le contenu de l'email
     const mailContent = {
@@ -245,6 +250,9 @@ router.post('/check-code', async (req, res) => {
         error: "Invalid code"
       })     
     }
+    // 4. Resetting the resetCode property of the user to 0 and notifying frontend about password reset allowed 
+    // - Remettre à 0 la propriété resetCode de l'utilisteur en bdd et notifier le frontend de l'autorisation à modifier le mdp
+    await User.updateOne({ email }, { resetCode: 0 })
     res.status(202).send({
       result: true,
       error: "Code is valid, password reset allowed"
@@ -261,12 +269,12 @@ router.post('/check-code', async (req, res) => {
 // POST - Reset password
 router.post('/reset-password', async (req, res) => {
   // ↩️ Data-in 
-    const { username, password } = req.body;
+    const { email, password } = req.body;
   
   // ⚙️ Logic & ↪️ Data-out
   try {
     // 1. Check user is in database - vérifier que l'utilisateur soit en base de données
-    const user = await User.findOne({ username });
+    const user = await User.findOne({ email });
     if(!user) {
       return res.status(400).send({
         result: false,
@@ -274,7 +282,7 @@ router.post('/reset-password', async (req, res) => {
       })
     }
     // 2. Updating password in database - mise à jour du mdp en bdd
-    await User.updateOne({ username }, { password: bcrypt.hashSync(password, 10)});
+    await User.updateOne({ email }, { password: bcrypt.hashSync(password, 10)});
     res.status(201).send({
       result: true,
       message: "Password successfully updated!"
