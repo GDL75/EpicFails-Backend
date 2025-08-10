@@ -28,7 +28,7 @@ router.post("/upload/:photoType", async function (req, res) {
     await req.files.photoFromFront.mv(photoPath);
 
     // on définit le dossier d'enregistrement en fonction du param de la route
-    const folder = req.params.photoType === "user" ? "EF_Users" : "EF_Fails"
+    const folder = req.params.photoType === "user" ? "Users" : "Fails"
     console.log("req.params",req.params,"folder", folder);
 
     // téléversement dans Cloudinary

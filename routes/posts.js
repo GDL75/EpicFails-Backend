@@ -12,38 +12,64 @@ const { sortObjectArray } = require("../modules/sortObjectArray");
 // GET de tous les posts avec deux paramètres facultatifs dans le body :
 // interest (array de string) : pour filtrer sur un ou plusieurs centres d'intérêts
 // nbMax (integer) : nombre maximum de posts en retour
-router.get("/", async function (req, res) {
+router.get("/:token", async function (req, res) {
   try {
     // le token du user est nécessaire pour l'affichage des likes, bookmarks et comments
-    if (!checkBody(req.body, ["token"])) {
+    if (!req.params.token) {
       res.json({ result: false, error: "User token is missing" });
       return;
     }
-    // on s'assure que req.body.interest ait le bon format (tableau d'une ou plusieurs chaînes)
-    let interests = req.body.interests;
 
-    if (typeof interests === "string") {
-      // il n'y a qu'un seul centre d'intérêt
-      interests = [interests]; // on le transforme en tableau
-    } else if (!Array.isArray(interests)) {
-      // isArray seul n'existe pas, il faut faire Array.isArray
-      interests = null;
-      // et sinon, interest est déjà un tableau et il n'y a pas de retraitement à faire
-    }
-    // on va chercher les posts dans la bdd selon qu'un ou plusieurs intérêts aient été renseignés
-    // ".lean()" transforme posts en "vrai" tableau JS, ce qui permet d'ajouter des clefs
-    const posts = interests
-      ? await Post.find({ interest: { $in: interests } }).lean()
-      : await Post.find().lean();
+    // on va chercher les posts dans la bdd. Requête aggregate collée depuis Compass
+    const rqPosts = [
+      {
+        // on récupère toutes les infos directement disponibles dans le post
+        $project: {
+          _id: 1,
+          userId: 1,
+          title: 1,
+          date: 1,
+          interest: 1,
+          actualPhotoURL: 1,
+          expectedPhotoURL: 1,
+          description: 1,
+        },
+      },
+      {
+        $lookup: {
+          // on ajoute le username et l'avatar grâce au userId
+          from: "users",
+          localField: "userId",
+          foreignField: "_id",
+          as: "user",
+        },
+      },
+      {
+        $project: {
+          // on élimine les autres infos du user (i.e. on ne garde que username et avatar)
+          _id: 1,
+          username: {
+            $arrayElemAt: ["$user.username", 0],
+          },
+          avatarURL: {
+            $arrayElemAt: ["$user.avatarURL", 0],
+          },
+          title: 1,
+          date: 1,
+          interest: 1,
+          actualPhotoURL: 1,
+          expectedPhotoURL: 1,
+          description: 1,
+        },
+      },
+    ];
+    const posts = await Post.aggregate(rqPosts);
 
     // tri par date, les plus récents en premier
     let sortedPosts = sortObjectArray(posts, "date", -1);
 
-    // on tronque la liste si un nbmax a été renseigné dans le body
-    req.body.nbMax && (sortedPosts = sortedPosts.slice(0, req.body.nbMax));
-
     // on récupère l'id du user connecté pour compter les likes, bookmarks et commentaires
-    const userObj = await User.findOne({ token: req.body.token }); // findOne donne directement un objet et non un tableau
+    const userObj = await User.findOne({ token: req.params.token }); // findOne donne directement un objet et non un tableau
     if (!userObj) {
       res.json({ result: false, error: "token does not exist in database" });
       return;
@@ -76,9 +102,6 @@ router.get("/", async function (req, res) {
         // on utilise "equals(...)" car "===" ne fonctionne pas sur des objectId
         item.nbcomments = nbcomments;
         item.isCommented = isCommented;
-
-        // on supprime le userId pour qu'il ne soit pas envoyé dans le frontend
-        item.userId = "*****";
       }
     }
     res.json({ result: true, posts: sortedPosts });
@@ -108,7 +131,7 @@ router.post("/", async function (req, res) {
     } = req.body;
 
     // on récupère l'id du user connecté
-    const userObj = await User.findOne({token: token}); // findOne donne directement un objet et non un tableau
+    const userObj = await User.findOne({ token: token }); // findOne donne directement un objet et non un tableau
     if (!userObj) {
       res.json({ result: false, error: "token does not exist in database" });
       return;
@@ -154,10 +177,10 @@ router.delete("/", async function (req, res) {
     }
 
     // on commence par effacer le post lui-même
-    await Post.deleteOne({ _id: postId })
-    
+    await Post.deleteOne({ _id: postId });
+
     // puis on supprime les likes, bookmarks et commentaires qui y étaient liés
-    await Like.deleteMany({postId: postId})
+    await Like.deleteMany({ postId: postId });
     await Bookmark.deleteMany({ postId: postId });
     await Comment.deleteMany({ postId: postId });
     // effacer la photo dans cloudinary
@@ -221,6 +244,7 @@ router.post("/like/", async function (req, res) {
 // POST toggle des signets sur un post
 router.post("/bookmark/", async function (req, res) {
   try {
+    console.log(req.body)
     if (!checkBody(req.body, ["token", "postId"])) {
       res.json({ result: false, error: "Some mandatory data is missing" });
       return;
