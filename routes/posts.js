@@ -21,20 +21,8 @@ router.get("/:token", async function (req, res) {
     }
 
     // on va chercher les posts dans la bdd. Requête aggregate collée depuis Compass
+    // (plus efficace qu'un .populate() et permet de choisir les clefs à garder)
     const rqPosts = [
-      {
-        // on récupère toutes les infos directement disponibles dans le post
-        $project: {
-          _id: 1,
-          userId: 1,
-          title: 1,
-          date: 1,
-          interest: 1,
-          actualPhotoURL: 1,
-          expectedPhotoURL: 1,
-          description: 1,
-        },
-      },
       {
         $lookup: {
           // on ajoute le username et l'avatar grâce au userId
