@@ -80,7 +80,7 @@ router.get("/:token", async function (req, res) {
     ).length;
     stats.fromCommunity.nbComments = (await Comment.aggregate(rqOnUser)).length;
 
-    // requête spécifique poue les duels
+    // requête spécifique pour les duels
     const rqDuel = [
       {
         // on va chercher les données du post
