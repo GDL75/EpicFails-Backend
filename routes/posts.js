@@ -88,7 +88,7 @@ router.get("/:token", async function (req, res) {
         const nbcomments = comments.length;
         const isCommented = comments.some((e) => e.userId.equals(userId));
         // on utilise "equals(...)" car "===" ne fonctionne pas sur des objectId
-        item.nbcomments = nbcomments;
+        item.nbComments = nbcomments;
         item.isCommented = isCommented;
       }
     }
@@ -207,6 +207,9 @@ router.post("/like/", async function (req, res) {
       return;
     }
 
+    // combien y a-t-il de likes pour l'instant ?
+    const nbLikes = await Like.countDocuments({ postId: postId });
+
     // Y a-t-il déjà un like en bdd ? Toggle selon la réponse
     const isLike = await Like.findOne({ userId: userId, postId: postId });
     if (!isLike) {
@@ -218,11 +221,16 @@ router.post("/like/", async function (req, res) {
       });
       // enregistrement en bdd
       await newLike.save();
-      res.json({ result: true, isLiked: true, newLikeId: newLike._id });
+      res.json({
+        result: true,
+        isLiked: true,
+        newLikeId: newLike._id,
+        nbLikes: nbLikes + 1,
+      });
     } else {
       // le post était liké par le user => on supprime ce like
       await Like.deleteOne({ userId: userId, postId: postId });
-      res.json({ result: true, isLiked: false });
+      res.json({ result: true, isLiked: false, nbLikes: nbLikes - 1 });
     }
   } catch (error) {
     res.status(400).json({ error: error.message });
@@ -232,7 +240,7 @@ router.post("/like/", async function (req, res) {
 // POST toggle des signets sur un post
 router.post("/bookmark/", async function (req, res) {
   try {
-    console.log(req.body)
+    console.log(req.body);
     if (!checkBody(req.body, ["token", "postId"])) {
       res.json({ result: false, error: "Some mandatory data is missing" });
       return;
@@ -258,7 +266,7 @@ router.post("/bookmark/", async function (req, res) {
       return;
     }
 
-    // Y a-t-il déjà un signet en bdd ? Toggle selon la réponse
+        // Y a-t-il déjà un signet en bdd ? Toggle selon la réponse
     const isBookmark = await Bookmark.findOne({
       userId: userId,
       postId: postId,
@@ -315,6 +323,9 @@ router.post("/comment/", async function (req, res) {
       return;
     }
 
+    // combien y a-t-il de commentaires pour l'instant ?
+    const nbComments = await Comment.countDocuments({ postId: postId });
+
     // on prépare le commentaire et on l'enregistre
     const newComment = new Comment({
       userId,
@@ -324,7 +335,12 @@ router.post("/comment/", async function (req, res) {
     });
     await newComment.save();
 
-    res.json({ result: true, isCommented: true, newCommentId: newComment._id });
+    res.json({
+      result: true,
+      isCommented: true,
+      newCommentId: newComment._id,
+      nbComments: nbComments + 1,
+    });
   } catch (error) {
     res.status(400).json({ error: error.message });
   }
