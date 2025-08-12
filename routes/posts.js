@@ -266,7 +266,7 @@ router.post("/bookmark/", async function (req, res) {
       return;
     }
 
-        // Y a-t-il déjà un signet en bdd ? Toggle selon la réponse
+    // Y a-t-il déjà un signet en bdd ? Toggle selon la réponse
     const isBookmark = await Bookmark.findOne({
       userId: userId,
       postId: postId,
@@ -347,43 +347,40 @@ router.post("/comment/", async function (req, res) {
 });
 
 // GET obtention de tous les posts d'un même centre d'intérêt
-router.get('/:token/:interest', async (req, res) => {
-  // ↩️ Data-in 
+router.get("/:token/:interest", async (req, res) => {
+  // ↩️ Data-in
   try {
-      // 1. Checking user is in DB - vérifier que l'utilisateur est en BDD
-      const isUser = await User.findOne({ token: req.params.token });
-      if(!isUser) {
-        return res.status(404).send({
-          result: false,
-          error: "User not found"
-        })
-      }
+    // 1. Checking user is in DB - vérifier que l'utilisateur est en BDD
+    const isUser = await User.findOne({ token: req.params.token });
+    if (!isUser) {
+      return res.status(404).send({
+        result: false,
+        error: "User not found",
+      });
+    }
 
-  // ⚙️ Logic
-      // 2. Searching post collection in DB for posts with an interest property whose value is that of the frontend param
-      // - Recherche des posts dans la DB dont la valeur propriété interest est celle du param envoyé par le frontend
-      const interestPosts = await Post.find({ interest: req.params.interest })
-      if(!interestPosts) {
-        return res.status(404).send({
-          result: false,
-          error: 'No posts for this interest'
-        })
-      }
+    // ⚙️ Logic
+    // 2. Searching post collection in DB for posts with an interest property whose value is that of the frontend param
+    // - Recherche des posts dans la DB dont la valeur propriété interest est celle du param envoyé par le frontend
+    const interestPosts = await Post.find({ interest: req.params.interest });
+    if (!interestPosts) {
+      return res.status(404).send({
+        result: false,
+        error: "No posts for this interest",
+      });
+    }
 
-  // ↪️ Data-out
-      res.status(200).send({
-        result: true,
-        posts: interestPosts
-      })
-    
+    // ↪️ Data-out
+    res.status(200).send({
+      result: true,
+      posts: interestPosts,
+    });
   } catch (err) {
     res.status(500).send({
       result: false,
-      error: err.message
-    })
+      error: err.message,
+    });
   }
-
-
-})
+});
 
 module.exports = router;
