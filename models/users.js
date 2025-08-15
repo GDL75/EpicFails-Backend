@@ -7,7 +7,7 @@ const userSchema = mongoose.Schema({
   token: { type: String, required: true },
   hasAcceptedGC: { type: Boolean, required: true },
   signUpDate: { type: Date, required: true, default: Date.now },
-  avatarURL: {
+  avatarUrl: {
     type: String,
     default:
       "https://res.cloudinary.com/dtnbiqfov/image/upload/v1755015141/953789_bkxjio.jpg",

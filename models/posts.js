@@ -23,9 +23,9 @@ const postSchema = mongoose.Schema({
     ],
   },
   description: String,
-  expectedPhotoURL: String,
-  actualPhotoURL: { type: String, required: true },
-  isOpenToDuel: { type: Boolean, default: false },
+  expectedPhotoUrl: String,
+  actualPhotoUrl: { type: String, required: true },
+  // isOpenToDuel: { type: Boolean, default: false },
 });
 
 const Post = mongoose.model("posts", postSchema);

@@ -43,7 +43,7 @@ router.post("/acceptsGC", async function (req, res) {
 router.post('/signup', async (req, res) => {
   console.log("From backend, signup trial") //🔴
   // ↩️ Data-in 
-    const { email, username, password, avatarURL } = req.body;
+    const { email, username, password, avatarUrl } = req.body;
   
   // ⚙️ Logic & ↪️ Data-out
     try {
@@ -85,7 +85,7 @@ router.post('/signup', async (req, res) => {
         token: uid2(32),
         hasAcceptedGC: false,
         signUpDate: new Date(),
-        avatarURL: avatarURL,
+        avatarUrl: avatarUrl,
         status: "Newbie",
         interests: [],
         resetCode: 0
