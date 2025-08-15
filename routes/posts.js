@@ -7,6 +7,7 @@ const Like = require("../models/likes");
 const Bookmark = require("../models/bookmarks");
 const Comment = require("../models/comments");
 const { checkBody } = require("../modules/checkBody");
+const { uploadPhoto } = require("../modules/uploadPhoto");
 const { sortObjectArray } = require("../modules/sortObjectArray");
 
 // GET de tous les posts avec deux paramètres facultatifs dans le body :
@@ -39,14 +40,14 @@ router.get("/:token", async function (req, res) {
           username: {
             $arrayElemAt: ["$user.username", 0],
           },
-          avatarURL: {
-            $arrayElemAt: ["$user.avatarURL", 0],
+          avatarUrl: {
+            $arrayElemAt: ["$user.avatarUrl", 0],
           },
           title: 1,
           date: 1,
           interest: 1,
-          actualPhotoURL: 1,
-          expectedPhotoURL: 1,
+          actualPhotoUrl: 1,
+          expectedPhotoUrl: 1,
           description: 1,
         },
       },
@@ -101,25 +102,26 @@ router.get("/:token", async function (req, res) {
 // POST Création d'un post en BDD (hors cloudinary pour l'instant)
 router.post("/", async function (req, res) {
   try {
-    if (
-      !checkBody(req.body, ["token", "title", "interest", "actualPhotoURL"])
-    ) {
+    if (!checkBody(req.body, ["token", "title", "interest"])) {
       res.json({ result: false, error: "Some mandatory data is missing" });
       return;
     }
-    // champs en entrée de la bdd
-    const {
-      token,
-      title,
-      interest,
-      description,
-      actualPhotoURL,
-      expectedPhotoURL,
-      isOpenToDuel,
-    } = req.body;
+    // On upload les photos dans Cloudinary
+    const actualPhotoUpload = await uploadPhoto(req.files.photoObligatoire);
+    if (!actualPhotoUpload.result) {
+      return res.json(actualPhotoUpload.error);
+    }
+    // pas besoin de if en entrée puisque le test est fait dans la fonction
+    const expectedPhotoUpload = await uploadPhoto(req.files.photoFacultative);
+    if (!expectedPhotoUpload.result) {
+      return res.json(expectedPhotoUpload.error);
+    }
+
+    // on récupère les données du body
+    const { title, interest, description } = req.body;
 
     // on récupère l'id du user connecté
-    const userObj = await User.findOne({ token: token }); // findOne donne directement un objet et non un tableau
+    const userObj = await User.findOne({ token: req.body["token"] }); // findOne donne directement un objet et non un tableau
     if (!userObj) {
       res.json({ result: false, error: "token does not exist in database" });
       return;
@@ -133,9 +135,8 @@ router.post("/", async function (req, res) {
       interest,
       description,
       date: new Date(),
-      expectedPhotoURL,
-      actualPhotoURL,
-      isOpenToDuel: isOpenToDuel ? true : false,
+      expectedPhotoUrl: expectedPhotoUpload.url,
+      actualPhotoUrl: actualPhotoUpload.url,
     });
     // enregistrement en bdd
     await newPost.save();
