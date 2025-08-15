@@ -22,7 +22,7 @@ async function uploadPhoto(photoForm) {
     await photoForm.mv(photoPath);
 
     // on définit le dossier d'enregistrement en fonction du param de la route
-    const folder = photoForm.photoType === "user" ? "Users" : "Fails";
+    const folder = photoForm.name === "user" ? "Users" : "Fails";
     // téléversement dans Cloudinary
     const resultCloudinary = await cloudinary.uploader.upload(photoPath, {
       folder: folder,

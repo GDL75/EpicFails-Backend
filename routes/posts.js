@@ -9,7 +9,6 @@ const Comment = require("../models/comments");
 const { checkBody } = require("../modules/checkBody");
 const { uploadPhoto } = require("../modules/uploadPhoto");
 const { sortObjectArray } = require("../modules/sortObjectArray");
-const { log } = require("console");
 
 // GET de tous les posts avec deux paramètres facultatifs dans le body :
 // interest (array de string) : pour filtrer sur un ou plusieurs centres d'intérêts

@@ -4,6 +4,7 @@ require("../models/connection");
 
 const User = require("../models/users");
 const { checkBody } = require("../modules/checkBody");
+const { uploadPhoto } = require("../modules/uploadPhoto");
 
 const bcrypt = require("bcrypt");
 const uid2 = require("uid2");
@@ -77,7 +78,12 @@ router.post('/signup', async (req, res) => {
                   error: "Username is already taken"
         })
       }
-      // 5. Adding user to database - Ajout de l'utilisateur à la base de donnée
+      // 5. upload de la profilePic dans Cloudinary et récupération de l'url
+      const profilePicUpload = await uploadPhoto(req.files.profilePic);
+      if (!profilePicUpload.result) {
+        return res.json({ result: false, error: profilePicUpload.error });
+      }
+      // 6. Adding user to database - Ajout de l'utilisateur à la base de donnée
       user = new User({
         username,
         email,
@@ -85,11 +91,11 @@ router.post('/signup', async (req, res) => {
         token: uid2(32),
         hasAcceptedGC: false,
         signUpDate: new Date(),
-        avatarUrl: avatarUrl,
+        avatarUrl: profilePicUpload.url,
         status: "Newbie",
         interests: [],
-        resetCode: 0
-      })
+        resetCode: 0,
+      });
       
       await user.save();
       res.status(201).send({
