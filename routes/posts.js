@@ -116,7 +116,6 @@ router.post("/", async function (req, res) {
     if (!expectedPhotoUpload.result) {
       return res.json(expectedPhotoUpload.error);
     }
-
     // on récupère les données du body
     const { title, interest, description } = req.body;
 
@@ -241,7 +240,6 @@ router.post("/like/", async function (req, res) {
 // POST toggle des signets sur un post
 router.post("/bookmark/", async function (req, res) {
   try {
-    console.log(req.body);
     if (!checkBody(req.body, ["token", "postId"])) {
       res.json({ result: false, error: "Some mandatory data is missing" });
       return;

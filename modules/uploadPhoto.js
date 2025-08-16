@@ -12,7 +12,7 @@ cloudinary.config({
 
 async function uploadPhoto(photoForm) {
   try {
-    if (!photoForm) {
+    if (!photoForm || photoForm.size === 0) {
       return { result: true, url: null }; // true car c'est ok sur photo facultative
     }
 

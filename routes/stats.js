@@ -24,8 +24,12 @@ router.get("/:token", async function (req, res) {
       return;
     }
     const userId = userObj._id;
+    const { username, avatarUrl } = userObj;
 
-    const stats = { fromUser: {}, fromCommunity: {}, points: {} };
+    // Initialisation de l'objet de résult
+    const stats = { user: {}, fromUser: {}, fromCommunity: {}, points: {} };
+    stats.user.username = username;
+    stats.user.avatarUrl = avatarUrl;
 
     // nombre d'actions réalisées par l'utilisateur
     stats.fromUser.nbPosts = await Post.countDocuments({ userId: userId });
@@ -142,9 +146,10 @@ router.get("/:token", async function (req, res) {
       { minPoints: 150, status: "Serial Failer" },
       { minPoints: 200, status: "Loser magnifique" },
     ];
-    for (let i = statusParams.length - 1; i > 0; i--) {
+    for (let i = statusParams.length - 1; i >= 0; i--) {
       if (stats.points.total >= statusParams[i].minPoints) {
         stats.points.status = statusParams[i].status;
+        break;
       }
     }
 

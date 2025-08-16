@@ -49,41 +49,37 @@ router.post('/signup', async (req, res) => {
   // ⚙️ Logic & ↪️ Data-out
     try {
       // 1. Checking that all fields are filled -- Vérifier que tous les champs aient été renseignés
-      if(!checkBody(req.body, ["email", "username", "password"])) {
+      if (!checkBody(req.body, ["email", "username", "password"])) {
         return res.status(400).send({
-                  result: false,
-                  error: "Missing or empty fields"
-              })
-      } 
+          result: false,
+          error: "Missing or empty fields",
+        });
+      }
       // 2. Checking that email is valid -- Vérifier que l'email soit valide
-      if(!checkEmail(email)) {
+      if (!checkEmail(email)) {
         return res.status(400).send({
-                  result: false,
-                  error: "Invalid email"
-              })
+          result: false,
+          error: "Invalid email",
+        });
       }
       // 3. Checking that user is not already signed up -- Vérifier que l'utilisateur n'ait pas déjà un compte
-      const isEmailInDB = await User.findOne({ email }) // 🔴
-      if(isEmailInDB) {
+      const isEmailInDB = await User.findOne({ email }); // 🔴
+      if (isEmailInDB) {
         return res.status(400).send({
-                  result: false,
-                  error: "User already exists"
-              })
+          result: false,
+          error: "User already exists",
+        });
       }
       // 4. Checking that username is available -- Vérifier le nom d'utilisateur est disponible
-      let user = await User.findOne({ username })
-      if(user) {
+      let user = await User.findOne({ username });
+      if (user) {
         return res.status(400).send({
-                  result: false,
-                  error: "Username is already taken"
-        })
+          result: false,
+          error: "Username is already taken",
+        });
       }
-      // 5. upload de la profilePic dans Cloudinary et récupération de l'url
-      const profilePicUpload = await uploadPhoto(req.files.profilePic);
-      if (!profilePicUpload.result) {
-        return res.json({ result: false, error: profilePicUpload.error });
-      }
-      // 6. Adding user to database - Ajout de l'utilisateur à la base de donnée
+
+      // 5. Adding user to database - Ajout de l'utilisateur à la base de donnée
       user = new User({
         username,
         email,
@@ -91,19 +87,31 @@ router.post('/signup', async (req, res) => {
         token: uid2(32),
         hasAcceptedGC: false,
         signUpDate: new Date(),
-        avatarUrl: profilePicUpload.url,
         status: "Newbie",
         interests: [],
         resetCode: 0,
       });
-      
+
       await user.save();
       res.status(201).send({
         result: true,
         message: "User signed-up!",
-        token: user.token
-      })
+        token: user.token,
+      });
 
+      // 6. upload de la profilePic dans Cloudinary et récupération de l'url. Cette étape se fait
+      // APRÈS le retour au front pour que l'upload ne soit pas perçu par l'utilisateur
+      const profilePicUpload = await uploadPhoto(req.files.profilePic);
+      // si pas de photo de profil, on remplace par la photo UserStandard avec "?"
+      !profilePicUpload.url &&
+        (profilePicUpload.url =
+          "https://res.cloudinary.com/dtnbiqfov/image/upload/v1755015141/953789_bkxjio.jpg");
+      // mise à jour de la photo en bdd
+      await User.updateOne(
+        { _id: user._id },
+        { avatarUrl: profilePicUpload.url }
+      );
+      
     } catch (err) {
       res.status(500).send({
         result: false,
