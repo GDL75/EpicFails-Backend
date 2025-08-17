@@ -145,21 +145,39 @@ router.post("/", async function (req, res) {
   }
 });
 
-// DELETE suppression d'un post
-router.delete("/", async function (req, res) {
+// DELETE suppression d'un post (MODIFIÉ - Option 1 avec sécurité)
+router.delete("/delete", async function (req, res) {
   try {
-    if (!checkBody(req.body, ["postId"])) {
-      res.json({ result: false, error: "The post id is missing" });
+    if (!checkBody(req.body, ["token", "postId"])) {
+      res.json({ result: false, error: "Token and post ID are required" });
       return;
     }
-    const postId = req.body.postId;
+
+    const { token, postId } = req.body;
+
+    // on récupère l'id du user connecté
+    const userObj = await User.findOne({ token: token }); // findOne donne directement un objet et non un tableau
+    if (!userObj) {
+      res.json({ result: false, error: "Invalid token" });
+      return;
+    }
+    const userId = userObj._id;
 
     // on vérifie que le postId existe bien dans la bdd
-    const isPostId = await Post.findOne({ _id: postId });
-    if (!isPostId) {
+    const post = await Post.findOne({ _id: postId });
+    if (!post) {
       res.json({
         result: false,
         error: "This post does not exist in database",
+      });
+      return;
+    }
+
+    // IMPORTANT: Vérifier que l'utilisateur est bien l'auteur du post
+    if (!post.userId.equals(userId)) {
+      res.json({
+        result: false,
+        error: "You are not authorized to delete this post",
       });
       return;
     }
@@ -173,9 +191,10 @@ router.delete("/", async function (req, res) {
     await Comment.deleteMany({ postId: postId });
     // effacer la photo dans cloudinary
 
-    res.json({ result: true });
+    res.json({ result: true, message: "Post deleted successfully" });
   } catch (error) {
-    res.status(400).json({ error: error.message });
+    console.error("Error deleting post:", error);
+    res.status(500).json({ result: false, error: error.message });
   }
 });
 
