@@ -24,12 +24,13 @@ router.get("/:token", async function (req, res) {
       return;
     }
     const userId = userObj._id;
-    const { username, avatarUrl } = userObj;
+    const { username, avatarUrl, email } = userObj;
 
     // Initialisation de l'objet de résult
     const stats = { user: {}, fromUser: {}, fromCommunity: {}, points: {} };
     stats.user.username = username;
     stats.user.avatarUrl = avatarUrl;
+    stats.user.email = email;
 
     // nombre d'actions réalisées par l'utilisateur
     stats.fromUser.nbPosts = await Post.countDocuments({ userId: userId });
