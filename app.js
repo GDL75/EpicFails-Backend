@@ -11,6 +11,7 @@ const usersRouter = require("./routes/users");
 const postsRouter = require("./routes/posts");
 const statsRouter = require("./routes/stats");
 const duelsRouter = require('./routes/duels');
+const searchRouter = require("./routes/search");
 
 const app = express();
 
@@ -30,5 +31,6 @@ app.use("/", indexRouter);
 app.use("/posts", postsRouter);
 app.use("/stats", statsRouter);
 app.use("/duels", duelsRouter);
+app.use("/search", searchRouter);
 
 module.exports = app;

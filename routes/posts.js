@@ -10,9 +10,7 @@ const { checkBody } = require("../modules/checkBody");
 const { uploadPhoto } = require("../modules/uploadPhoto");
 const { sortObjectArray } = require("../modules/sortObjectArray");
 
-// GET de tous les posts avec deux paramètres facultatifs dans le body :
-// interest (array de string) : pour filtrer sur un ou plusieurs centres d'intérêts
-// nbMax (integer) : nombre maximum de posts en retour
+// GET de tous les posts avec les nombres de likes, de commentaires et de signets
 router.get("/:token", async function (req, res) {
   try {
     // le token du user est nécessaire pour l'affichage des likes, bookmarks et comments
@@ -173,7 +171,7 @@ router.delete("/delete", async function (req, res) {
       return;
     }
 
-    // IMPORTANT: Vérifier que l'utilisateur est bien l'auteur du post
+    // IMPORTANT: Vérifier que l'utilisateur soit bien l'auteur du post
     if (!post.userId.equals(userId)) {
       res.json({
         result: false,
