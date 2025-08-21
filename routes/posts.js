@@ -33,13 +33,16 @@ router.get("/:token", async function (req, res) {
       },
       {
         $project: {
-          // on élimine les autres infos du user (i.e. on ne garde que username et avatar)
+          // on élimine les autres infos du user (i.e. on ne garde que token, username et avatar)
           _id: 1,
           username: {
             $arrayElemAt: ["$user.username", 0],
           },
           avatarUrl: {
             $arrayElemAt: ["$user.avatarUrl", 0],
+          },
+          token: {
+            $arrayElemAt: ["$user.token", 0],
           },
           title: 1,
           date: 1,

@@ -52,6 +52,9 @@ router.post("/", async function (req, res) {
           avatarUrl: {
             $arrayElemAt: ["$user.avatarUrl", 0],
           },
+          token: {
+            $arrayElemAt: ["$user.token", 0],
+          },
           title: 1,
           date: 1,
           interest: 1,
