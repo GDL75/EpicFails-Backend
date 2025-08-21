@@ -102,7 +102,7 @@ router.post("/signup", async (req, res) => {
     // 6. upload de la profilePic dans Cloudinary et récupération de l'url. Cette étape se fait
     // APRÈS le retour au front pour que l'upload ne soit pas perçu par l'utilisateur
     const profilePicUpload = await uploadPhoto(req.files.profilePic);
-    // si pas de photo de profil, on remplace par la photo UserStandard avec "?"
+    // si pas de photo de profil, on remplace par la photo UserStandard avec "?" (normalement déjà testé en front)
     !profilePicUpload.url &&
       (profilePicUpload.url =
         "https://res.cloudinary.com/dtnbiqfov/image/upload/v1755015141/953789_bkxjio.jpg");
