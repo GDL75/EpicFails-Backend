@@ -6,6 +6,10 @@ const duelSchema = mongoose.Schema({
     ref: "users",
     required: true,
   },
+  category: {
+    type: String,
+    required: true,
+  },
   post1Id: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "posts",
