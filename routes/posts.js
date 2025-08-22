@@ -175,6 +175,7 @@ router.delete("/delete", async function (req, res) {
     }
 
     // IMPORTANT: Vérifier que l'utilisateur soit bien l'auteur du post
+    // ⚠️ a priori inutile puisqu'en front la poubelle n'apparaît que si le user est l'auteur du post
     if (!post.userId.equals(userId)) {
       res.json({
         result: false,
