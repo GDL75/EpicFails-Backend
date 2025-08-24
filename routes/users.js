@@ -344,7 +344,7 @@ router.put("/update-profile", async (req, res) => {
       updateFields.email = newEmail;
     }
     // mise à jour du mot de passe (si présent)
-    if (newPassword ) {
+    if (newPassword) {
       updateFields.password = bcrypt.hashSync(newPassword, 10);
     }
 
@@ -363,8 +363,36 @@ router.put("/update-profile", async (req, res) => {
   }
 });
 
-// POST - update interests 
-router.post('/update-interests', async(req, res) => {
+// GET - récupère les intérêts de l'utilisateur
+router.get("/interests/:token", async (req, res) => {
+  // ↩️ Data-in
+  const token = req.params.token;
+
+  // ⚙️ Logic & ↪️ Data-out
+  try {
+    // 1. Check user is in database - vérifier que l'utilisateur soit en base de données
+    const user = await User.findOne({ token });
+    if (!user) {
+      return res.status(400).send({
+        result: false,
+        error: "User not found",
+      });
+    } else {
+      res.status(201).send({
+        result: true,
+        interests: user.interests,
+      });
+    }
+  } catch (err) {
+    res.status(500).send({
+      result: false,
+      error: err.message,
+    });
+  }
+});
+
+// POST - update interests
+router.post("/update-interests", async (req, res) => {
   // ↩️ Data-in
   const { token, interests } = req.body;
 
@@ -379,10 +407,7 @@ router.post('/update-interests', async(req, res) => {
       });
     }
     // 2. Updating interests in database - mise à jour des centres d'intérêt en bdd
-    await User.updateOne(
-      { token },
-      { interests }
-    );
+    await User.updateOne({ token }, { interests });
     res.status(201).send({
       result: true,
       message: "Interests successfully updated!",
@@ -393,6 +418,6 @@ router.post('/update-interests', async(req, res) => {
       error: err.message,
     });
   }
-})
+});
 
 module.exports = router;
