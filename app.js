@@ -12,6 +12,7 @@ const postsRouter = require("./routes/posts");
 const statsRouter = require("./routes/stats");
 const duelsRouter = require('./routes/duels');
 const searchRouter = require("./routes/search");
+const commentsRouter = require('./routes/comments');
 
 const app = express();
 
@@ -32,5 +33,6 @@ app.use("/posts", postsRouter);
 app.use("/stats", statsRouter);
 app.use("/duels", duelsRouter);
 app.use("/search", searchRouter);
+app.use('/comments', commentsRouter);
 
 module.exports = app;

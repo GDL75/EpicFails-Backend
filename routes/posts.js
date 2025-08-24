@@ -317,6 +317,9 @@ router.post("/bookmark/", async function (req, res) {
 
 // POST ajout d'un commentaire sur un post
 router.post("/comment/", async function (req, res) {
+  // A supprimer en prod
+  console.log("POST /posts/comment/ appelé");
+  console.log("Body reçu :", req.body);
   try {
     if (!checkBody(req.body, ["token", "postId", "comment"])) {
       res.json({ result: false, error: "Some mandatory data is missing" });
