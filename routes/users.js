@@ -101,16 +101,22 @@ router.post("/signup", async (req, res) => {
 
     // 6. upload de la profilePic dans Cloudinary et récupération de l'url. Cette étape se fait
     // APRÈS le retour au front pour que l'upload ne soit pas perçu par l'utilisateur
-    const profilePicUpload = await uploadPhoto(req.files.profilePic);
-    // si pas de photo de profil, on remplace par la photo UserStandard avec "?" (normalement déjà testé en front)
-    !profilePicUpload.url &&
-      (profilePicUpload.url =
-        "https://res.cloudinary.com/dtnbiqfov/image/upload/v1755015141/953789_bkxjio.jpg");
-    // mise à jour de la photo en bdd
-    await User.updateOne(
-      { _id: user._id },
-      { avatarUrl: profilePicUpload.url }
-    );
+    if (req.files?.profilePic) {
+      uploadPhoto(req.files.profilePic)
+        .then((profilePicUpload) =>
+          User.updateOne({ _id: user._id }, { avatarUrl: profilePicUpload.url })
+        )
+        .catch((err) => console.error("Photo upload failed:", err.message));
+    } else {
+      // s'il n'y a pas de photo, on renseigne la photo par défaut
+      await User.updateOne(
+        { _id: user._id },
+        {
+          avatarUrl:
+            "https://res.cloudinary.com/dtnbiqfov/image/upload/v1755015141/953789_bkxjio.jpg",
+        }
+      );
+    }
   } catch (err) {
     res.status(500).send({
       result: false,
