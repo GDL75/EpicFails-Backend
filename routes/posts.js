@@ -317,9 +317,6 @@ router.post("/bookmark/", async function (req, res) {
 
 // POST ajout d'un commentaire sur un post
 router.post("/comment/", async function (req, res) {
-  // A supprimer en prod
-  console.log("POST /posts/comment/ appelé");
-  console.log("Body reçu :", req.body);
   try {
     if (!checkBody(req.body, ["token", "postId", "comment"])) {
       res.json({ result: false, error: "Some mandatory data is missing" });
@@ -363,6 +360,59 @@ router.post("/comment/", async function (req, res) {
       isCommented: true,
       newCommentId: newComment._id,
       nbComments: nbComments + 1,
+    });
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+// DELETE suppression d'un commentaire sur un post
+router.delete("/comment/", async function (req, res) {
+  try {
+    if (!checkBody(req.body, ["token", "commentId"])) {
+      res.json({ result: false, error: "Some mandatory data is missing" });
+      return;
+    }
+    // champs en entrée de la bdd
+    const { token, commentId } = req.body;
+    
+    
+    // on va chercher le commentaire en bdd
+    const comment = await Comment.findOne({ _id: commentId });
+    if (!comment) {
+      res.json({
+        result: false,
+        error: "This comment does not exist in database",
+      });
+      return;
+    }
+    
+    //on vérifie que l'utilisateur connecté soit bien l'auteur commentaire
+    const author = await User.findOne({ _id: comment.userId }); // findOne donne directement un objet et non un tableau
+    if (!author) {
+      res.json({
+        result: false,
+        error: "User token does not exist in database",
+      });
+      return;
+    }
+    
+    // on efface le commentaire de la bdd si le user est bien l'auteur du commentaire
+    console.log("token === author.token", token , author.token);
+    if (token === author.token) {
+      console.log("Dans le if");
+      await Comment.deleteOne({ _id: commentId });
+    } else {
+      console.log("Dans le else");
+      res.json({
+        result: false,
+        error: "The connected user is not the comment's author",
+      });
+      return;
+    }
+
+    res.json({
+      result: true,
     });
   } catch (error) {
     res.status(400).json({ error: error.message });
