@@ -1,18 +1,35 @@
-const express = require('express');
+const mongoose = require("mongoose");
+const express = require("express");
 const router = express.Router();
-const Comment = require('../models/comments');
-const User = require('../models/users');
+const Comment = require("../models/comments");
+const User = require("../models/users");
 const Post = require("../models/posts");
 const { checkBody } = require("../modules/checkBody");
 
 // GET tous les commentaires d'un post donné
-router.get('/:postId', async (req, res) => {
+router.get("/:postId", async (req, res) => {
   try {
-    const comments = await Comment.find({ postId: req.params.postId })
+    // On récupère l'identifiant du post envoyé dans l'URL
+    let postId = req.params.postId.trim();
+    // On vérifie que l'identifiant a bien le bon format (24 caractères)
+    if (!mongoose.Types.ObjectId.isValid(postId)) {
+      // Si ce n'est pas le bon format, on renvoie une erreur
+      return res
+        .status(400)
+        .json({ result: false, error: "Format postId invalide" });
+    }
+    // On transforme la chaîne reçue en vrai identifiant MongoDB
+    postId = new mongoose.Types.ObjectId(postId);
+    // On cherche les commentaires qui ont ce postId dans la base
+    const comments = await Comment.find({ postId })
+      // On les classe par date, du plus récent au plus ancien
       .sort({ date: -1 })
-      .populate('userId', 'username avatarUrl');
+      // On ajoute les infos de l'utilisateur (pseudo, avatar) dans chaque commentaire
+      .populate("userId", "username avatarUrl");
+    // On envoie la liste des commentaires au client (navigateur ou test)
     res.json({ result: true, comments });
   } catch (error) {
+    // S'il y a une erreur, on la transmet avec un statut 400 et le message
     res.status(400).json({ result: false, error: error.message });
   }
 });
@@ -26,7 +43,7 @@ router.post("/", async function (req, res) {
     }
     // champs en entrée de la bdd
     const { token, postId, comment } = req.body;
-    
+
     // on récupère l'id du user connecté
     const userObj = await User.findOne({ token: token }); // findOne donne directement un objet et non un tableau
     if (!userObj) {
@@ -34,7 +51,7 @@ router.post("/", async function (req, res) {
       return;
     }
     const userId = userObj._id;
-    
+
     // on vérifie que le postId existe bien dans la bdd
     const isPostId = await Post.findOne({ _id: postId });
     if (!isPostId) {
@@ -77,8 +94,7 @@ router.delete("/", async function (req, res) {
     }
     // champs en entrée de la bdd
     const { token, commentId } = req.body;
-    
-    
+
     // on va chercher le commentaire en bdd
     const comment = await Comment.findOne({ _id: commentId });
     if (!comment) {
@@ -88,7 +104,7 @@ router.delete("/", async function (req, res) {
       });
       return;
     }
-    
+
     //on vérifie que l'utilisateur connecté soit bien l'auteur commentaire
     const author = await User.findOne({ _id: comment.userId }); // findOne donne directement un objet et non un tableau
     if (!author) {
@@ -98,9 +114,9 @@ router.delete("/", async function (req, res) {
       });
       return;
     }
-    
+
     // on efface le commentaire de la bdd si le user est bien l'auteur du commentaire
-    console.log("token === author.token", token , author.token);
+    console.log("token === author.token", token, author.token);
     if (token === author.token) {
       console.log("Dans le if");
       await Comment.deleteOne({ _id: commentId });
