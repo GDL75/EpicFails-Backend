@@ -26,3 +26,8 @@ test("GET /comments/:postId répond avec le commentaire attendu", async () => {
   );
   expect(commentaireTrouve).toBeDefined();
 });
+
+// pour éviter le message d'alerte en jaune à l'issue du test
+afterAll(async () => {
+  await mongoose.connection.close(); // ferme la connexion DB
+});
