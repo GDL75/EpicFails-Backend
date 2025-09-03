@@ -6,6 +6,7 @@ const Post = require("../models/posts");
 const Like = require("../models/likes");
 const Bookmark = require("../models/bookmarks");
 const Comment = require("../models/comments");
+const Duel = require("../models/duels");
 const { checkBody } = require("../modules/checkBody");
 const { uploadPhoto } = require("../modules/uploadPhoto");
 const { sortObjectArray } = require("../modules/sortObjectArray");
@@ -440,6 +441,7 @@ router.delete("/", async function (req, res) {
     await Like.deleteMany({ postId: postId });
     await Bookmark.deleteMany({ postId: postId });
     await Comment.deleteMany({ postId: postId });
+    await Duel.deleteMany({ winnerPostId: postId });
     res.json({ result: true, message: "Post deleted successfully" });
   } catch (error) {
     console.error("Error deleting post:", error);
