@@ -131,6 +131,7 @@ router.delete("/", async function (req, res) {
 
     res.json({
       result: true,
+      message: "Comment successfully deleted"
     });
   } catch (error) {
     res.status(400).json({ error: error.message });

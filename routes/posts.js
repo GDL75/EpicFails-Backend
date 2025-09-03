@@ -403,7 +403,7 @@ router.post("/comment/", async function (req, res) {
 /* ------------------- DELETE ----------------------- */
 
 // DELETE suppression d'un post
-router.delete("/delete", async function (req, res) {
+router.delete("/", async function (req, res) {
   try {
     // Contrôle des champs
     if (!checkBody(req.body, ["token", "postId"])) {
@@ -448,44 +448,45 @@ router.delete("/delete", async function (req, res) {
 });
 
 // DELETE suppression d'un commentaire sur un post
-router.delete("/comment/", async function (req, res) {
-  try {
-    // Contrôle des champs
-    if (!checkBody(req.body, ["token", "commentId"])) {
-      res.json({ result: false, error: "Some mandatory data is missing" });
-      return;
-    }
-    // On récupère le commentaire et son auteur
-    const { token, commentId } = req.body;
-    const comment = await Comment.findOne({ _id: commentId });
-    if (!comment) {
-      res.json({
-        result: false,
-        error: "This comment does not exist in database",
-      });
-      return;
-    }
-    const author = await User.findOne({ _id: comment.userId });
-    if (!author) {
-      res.json({
-        result: false,
-        error: "User token does not exist in database",
-      });
-      return;
-    }
-    // Vérification que le token envoyé correspond à l’auteur
-    if (token === author.token) {
-      await Comment.deleteOne({ _id: commentId });
-      res.json({ result: true });
-    } else {
-      res.json({
-        result: false,
-        error: "The connected user is not the comment's author",
-      });
-    }
-  } catch (error) {
-    res.status(400).json({ error: error.message });
-  }
-});
+// ====> repris dans le fichier comments.js
+// router.delete("/comment/", async function (req, res) {
+//   try {
+//     // Contrôle des champs
+//     if (!checkBody(req.body, ["token", "commentId"])) {
+//       res.json({ result: false, error: "Some mandatory data is missing" });
+//       return;
+//     }
+//     // On récupère le commentaire et son auteur
+//     const { token, commentId } = req.body;
+//     const comment = await Comment.findOne({ _id: commentId });
+//     if (!comment) {
+//       res.json({
+//         result: false,
+//         error: "This comment does not exist in database",
+//       });
+//       return;
+//     }
+//     const author = await User.findOne({ _id: comment.userId });
+//     if (!author) {
+//       res.json({
+//         result: false,
+//         error: "User token does not exist in database",
+//       });
+//       return;
+//     }
+//     // Vérification que le token envoyé correspond à l’auteur
+//     if (token === author.token) {
+//       await Comment.deleteOne({ _id: commentId });
+//       res.json({ result: true });
+//     } else {
+//       res.json({
+//         result: false,
+//         error: "The connected user is not the comment's author",
+//       });
+//     }
+//   } catch (error) {
+//     res.status(400).json({ error: error.message });
+//   }
+// });
 
 module.exports = router;

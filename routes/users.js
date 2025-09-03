@@ -44,7 +44,7 @@ router.post("/acceptsGC", async function (req, res) {
 router.post("/signup", async (req, res) => {
   console.log("From backend, signup trial"); //🔴
   // ↩️ Data-in
-  const { email, username, password, avatarUrl } = req.body;
+  const { email, username, password } = req.body;
 
   // ⚙️ Logic & ↪️ Data-out
   try {
@@ -274,7 +274,7 @@ router.post("/check-code", async (req, res) => {
     await User.updateOne({ email }, { resetCode: 0 });
     res.status(202).send({
       result: true,
-      error: "Code is valid, password reset allowed",
+      message: "Code is valid, password reset allowed",
     });
   } catch (err) {
     res.status(500).send({
