@@ -328,7 +328,7 @@ router.put("/update-profile", async (req, res) => {
     }
     // objet pour stocker les champs à mettre à jour
     const updateFields = {};
-
+    
     // mise à jour de la photo de profil (si présente)
     if (req.files?.profilePic) {
       const profilePicUpload = await uploadPhoto(req.files.profilePic);
