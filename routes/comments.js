@@ -9,27 +9,43 @@ const { checkBody } = require("../modules/checkBody");
 // GET tous les commentaires d'un post donné
 router.get("/:postId", async (req, res) => {
   try {
-    // On récupère l'identifiant du post envoyé dans l'URL
     let postId = req.params.postId.trim();
-    // On vérifie que l'identifiant a bien le bon format (24 caractères)
+    
     if (!mongoose.Types.ObjectId.isValid(postId)) {
-      // Si ce n'est pas le bon format, on renvoie une erreur
-      return res
-        .status(400)
-        .json({ result: false, error: "Format postId invalide" });
+      return res.status(400).json({ result: false, error: "Format postId invalide" });
     }
-    // On transforme la chaîne reçue en vrai identifiant MongoDB
+    
     postId = new mongoose.Types.ObjectId(postId);
-    // On cherche les commentaires qui ont ce postId dans la base
+
+    // Populate sans le token d'abord
     const comments = await Comment.find({ postId })
-      // On les classe par date, du plus récent au plus ancien
       .sort({ date: -1 })
-      // On ajoute les infos de l'utilisateur (pseudo, avatar) dans chaque commentaire
       .populate("userId", "username avatarUrl");
-    // On envoie la liste des commentaires au client (navigateur ou test)
-    res.json({ result: true, comments });
+
+    // Récupération séparée des tokens
+    const userIds = comments.map(c => c.userId?._id).filter(Boolean);
+    const usersWithTokens = await User.find(
+      { _id: { $in: userIds } }, 
+      { token: 1 }
+    );
+
+    // Map userId -> token
+    const tokenMap = {};
+    usersWithTokens.forEach(user => {
+      tokenMap[user._id.toString()] = user.token;
+    });
+
+    // Ajout des tokens aux données populées
+    const enrichedComments = comments.map(comment => {
+      const commentObj = comment.toObject();
+      if (commentObj.userId) {
+        commentObj.userId.token = tokenMap[commentObj.userId._id.toString()];
+      }
+      return commentObj;
+    });
+    
+    res.json({ result: true, comments: enrichedComments });
   } catch (error) {
-    // S'il y a une erreur, on la transmet avec un statut 400 et le message
     res.status(400).json({ result: false, error: error.message });
   }
 });
