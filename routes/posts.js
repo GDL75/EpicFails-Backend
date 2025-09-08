@@ -13,43 +13,44 @@ const { sortObjectArray } = require("../modules/sortObjectArray");
 
 /* --------------------- GET ------------------------ */
 
+// 🚨‼️ => à effacer
 // GET posts créés par l'utilisateur connecté (+ avatar + états + nb likes/commentaires)
-router.get("/myposts/:token", async (req, res) => {
-  try {
-    // On récupère l'utilisateur via le token
-    const user = await User.findOne({ token: req.params.token });
-    if (!user) {
-      // Si l'utilisateur n'est pas trouvé, on retourne une erreur
-      return res.json({ result: false, error: "User not found" });
-    }
-    // On récupère les posts créés par l'utilisateur (triés par date décroissante)
-    const myPosts = await Post.find({ userId: user._id })
-      .sort({ date: -1 })
-      // Pour chaque post, on enrichit les données :
-      .populate({ path: "userId", select: "username avatarUrl" });
+// router.get("/myposts/:token", async (req, res) => {
+//   try {
+//     // On récupère l'utilisateur via le token
+//     const user = await User.findOne({ token: req.params.token });
+//     if (!user) {
+//       // Si l'utilisateur n'est pas trouvé, on retourne une erreur
+//       return res.json({ result: false, error: "User not found" });
+//     }
+//     // On récupère les posts créés par l'utilisateur (triés par date décroissante)
+//     const myPosts = await Post.find({ userId: user._id })
+//       .sort({ date: -1 })
+//       // Pour chaque post, on enrichit les données :
+//       .populate({ path: "userId", select: "username avatarUrl" });
 
-    const postsWithStats = [];
-    for (let post of myPosts) {
-      const plainPost = post.toObject();
-      plainPost.nbLikes = await Like.countDocuments({ postId: post._id });
-      plainPost.nbComments = await Comment.countDocuments({ postId: post._id });
-      plainPost.isLiked = await Like.exists({
-        userId: user._id,
-        postId: post._id,
-      });
-      plainPost.isCommented = await Comment.exists({
-        userId: user._id,
-        postId: post._id,
-      });
-      postsWithStats.push(plainPost);
-    }
-    res.json({ result: true, posts: postsWithStats });
-  } catch (error) {
-    res.status(400).json({ error: error.message });
-  }
-});
+//     const postsWithStats = [];
+//     for (let post of myPosts) {
+//       const plainPost = post.toObject();
+//       plainPost.nbLikes = await Like.countDocuments({ postId: post._id });
+//       plainPost.nbComments = await Comment.countDocuments({ postId: post._id });
+//       plainPost.isLiked = await Like.exists({
+//         userId: user._id,
+//         postId: post._id,
+//       });
+//       plainPost.isCommented = await Comment.exists({
+//         userId: user._id,
+//         postId: post._id,
+//       });
+//       postsWithStats.push(plainPost);
+//     }
+//     res.json({ result: true, posts: postsWithStats });
+//   } catch (error) {
+//     res.status(400).json({ error: error.message });
+//   }
+// });
 
-// GET de tous les posts pour la home (agrégat limité aux champs utiles)
+// GET de tous les posts pour les différentes pages (agrégat limité aux champs utiles)
 router.get("/:token", async function (req, res) {
   try {
     if (!req.params.token) {
@@ -200,26 +201,26 @@ router.get("/:token", async function (req, res) {
 // });
 
 // GET tous les posts d'un même centre d'intérêt
-router.get("/:token/:interest", async (req, res) => {
-  try {
-    // On récupère l'utilisateur via le token
-    const isUser = await User.findOne({ token: req.params.token });
-    if (!isUser) {
-      return res.status(404).send({ result: false, error: "User not found" });
-    }
-    // On recherche les posts concernés
-    const interestPosts = await Post.find({ interest: req.params.interest });
-    if (!interestPosts) {
-      return res.status(404).send({
-        result: false,
-        error: "No posts for this interest",
-      });
-    }
-    res.status(200).send({ result: true, posts: interestPosts });
-  } catch (err) {
-    res.status(500).send({ result: false, error: err.message });
-  }
-});
+// router.get("/:token/:interest", async (req, res) => {
+//   try {
+//     // On récupère l'utilisateur via le token
+//     const isUser = await User.findOne({ token: req.params.token });
+//     if (!isUser) {
+//       return res.status(404).send({ result: false, error: "User not found" });
+//     }
+//     // On recherche les posts concernés
+//     const interestPosts = await Post.find({ interest: req.params.interest });
+//     if (!interestPosts) {
+//       return res.status(404).send({
+//         result: false,
+//         error: "No posts for this interest",
+//       });
+//     }
+//     res.status(200).send({ result: true, posts: interestPosts });
+//   } catch (err) {
+//     res.status(500).send({ result: false, error: err.message });
+//   }
+// });
 
 /* -------------------- POST ------------------------ */
 
@@ -449,47 +450,5 @@ router.delete("/", async function (req, res) {
     res.status(500).json({ result: false, error: error.message });
   }
 });
-
-// DELETE suppression d'un commentaire sur un post
-// ====> repris dans le fichier comments.js
-// router.delete("/comment/", async function (req, res) {
-//   try {
-//     // Contrôle des champs
-//     if (!checkBody(req.body, ["token", "commentId"])) {
-//       res.json({ result: false, error: "Some mandatory data is missing" });
-//       return;
-//     }
-//     // On récupère le commentaire et son auteur
-//     const { token, commentId } = req.body;
-//     const comment = await Comment.findOne({ _id: commentId });
-//     if (!comment) {
-//       res.json({
-//         result: false,
-//         error: "This comment does not exist in database",
-//       });
-//       return;
-//     }
-//     const author = await User.findOne({ _id: comment.userId });
-//     if (!author) {
-//       res.json({
-//         result: false,
-//         error: "User token does not exist in database",
-//       });
-//       return;
-//     }
-//     // Vérification que le token envoyé correspond à l’auteur
-//     if (token === author.token) {
-//       await Comment.deleteOne({ _id: commentId });
-//       res.json({ result: true });
-//     } else {
-//       res.json({
-//         result: false,
-//         error: "The connected user is not the comment's author",
-//       });
-//     }
-//   } catch (error) {
-//     res.status(400).json({ error: error.message });
-//   }
-// });
 
 module.exports = router;
