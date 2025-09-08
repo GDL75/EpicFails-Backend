@@ -71,6 +71,8 @@ router.get("/podium/:category", async(req, res) => {
     const firstPlace = await Post.findById(duels[0]._id)
     const secondPlace = await Post.findById(duels[1]._id)
     const thirdPlace = await Post.findById(duels[2]._id)
+    console.log(duels[0]);
+    
 
     res.status(201).send({
       result: true,
