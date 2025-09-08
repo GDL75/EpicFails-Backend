@@ -121,82 +121,83 @@ router.get("/:token", async function (req, res) {
   }
 });
 
-// GET des posts likés d'un user, filtrés par catégorie
-router.get("/liked/:token", async (req, res) => {
-  try {
-    // On récupère l'utilisateur via le token
-    const user = await User.findOne({ token: req.params.token });
-    if (!user) {
-      return res.json({ result: false, error: "User not found" });
-    }
-    // Gestion multi-catégorie
-    let categories = [];
-    if (req.query.categories) {
-      categories = req.query.categories.split(",").map((cat) => cat.trim());
-    } else if (req.query.category) {
-      categories = [req.query.category];
-    }
-    // On récupère les likes de l'utilisateur et on "populate" sur le post + l'auteur
-    const likes = await Like.find({ userId: user._id }).populate({
-      path: "postId",
-      populate: { path: "userId", select: "username avatarUrl" },
-    });
-    // Filtre par catégorie si besoin
-    let likedPosts = likes.map((like) => like.postId).filter((post) => post);
-    if (categories.length > 0) {
-      likedPosts = likedPosts.filter((post) =>
-        categories.includes(post.interest)
-      );
-    }
-    // Enrichit des flags pour l'affichage
-    for (let post of likedPosts) {
-      post.nbLikes = await Like.countDocuments({ postId: post._id });
-      post.isLiked = true;
-    }
-    res.json({ result: true, posts: likedPosts });
-  } catch (error) {
-    res.status(400).json({ error: error.message });
-  }
-});
+// 🚨‼️ => à effacer
+// GET des posts likés d'un user, filtrés par catégorie 
+// router.get("/liked/:token", async (req, res) => {
+//   try {
+//     // On récupère l'utilisateur via le token
+//     const user = await User.findOne({ token: req.params.token });
+//     if (!user) {
+//       return res.json({ result: false, error: "User not found" });
+//     }
+//     // Gestion multi-catégorie
+//     let categories = [];
+//     if (req.query.categories) {
+//       categories = req.query.categories.split(",").map((cat) => cat.trim());
+//     } else if (req.query.category) {
+//       categories = [req.query.category];
+//     }
+//     // On récupère les likes de l'utilisateur et on "populate" sur le post + l'auteur
+//     const likes = await Like.find({ userId: user._id }).populate({
+//       path: "postId",
+//       populate: { path: "userId", select: "username avatarUrl" },
+//     });
+//     // Filtre par catégorie si besoin
+//     let likedPosts = likes.map((like) => like.postId).filter((post) => post);
+//     if (categories.length > 0) {
+//       likedPosts = likedPosts.filter((post) =>
+//         categories.includes(post.interest)
+//       );
+//     }
+//     // Enrichit des flags pour l'affichage
+//     for (let post of likedPosts) {
+//       post.nbLikes = await Like.countDocuments({ postId: post._id });
+//       post.isLiked = true;
+//     }
+//     res.json({ result: true, posts: likedPosts });
+//   } catch (error) {
+//     res.status(400).json({ error: error.message });
+//   }
+// });
 
 // GET des posts bookmarkés d'un user, filtrés par catégorie
-router.get("/bookmarked/:token", async (req, res) => {
-  try {
-    // On récupère l'utilisateur via le token
-    const user = await User.findOne({ token: req.params.token });
-    if (!user) {
-      return res.json({ result: false, error: "User not found" });
-    }
-    // Gestion multi-catégorie en query
-    let categories = [];
-    if (req.query.categories) {
-      categories = req.query.categories.split(",").map((cat) => cat.trim());
-    } else if (req.query.category) {
-      categories = [req.query.category];
-    }
-    // On récupère les signets de l'utilisateur + auteur
-    const bookmarks = await Bookmark.find({ userId: user._id }).populate({
-      path: "postId",
-      populate: { path: "userId", select: "username avatarUrl" },
-    });
-    let bookmarkedPosts = bookmarks
-      .map((bookmark) => bookmark.postId)
-      // Filtre selon la catégorie/les catégories demandées
-      .filter((post) => post);
-    if (categories.length > 0) {
-      bookmarkedPosts = bookmarkedPosts.filter((post) =>
-        categories.includes(post.interest)
-      );
-    }
-    // On enrichit chaque post d'un flag "isBookmarked"
-    for (let post of bookmarkedPosts) {
-      post.isBookmarked = true;
-    }
-    res.json({ result: true, posts: bookmarkedPosts });
-  } catch (error) {
-    res.status(400).json({ error: error.message });
-  }
-});
+// router.get("/bookmarked/:token", async (req, res) => {
+//   try {
+//     // On récupère l'utilisateur via le token
+//     const user = await User.findOne({ token: req.params.token });
+//     if (!user) {
+//       return res.json({ result: false, error: "User not found" });
+//     }
+//     // Gestion multi-catégorie en query
+//     let categories = [];
+//     if (req.query.categories) {
+//       categories = req.query.categories.split(",").map((cat) => cat.trim());
+//     } else if (req.query.category) {
+//       categories = [req.query.category];
+//     }
+//     // On récupère les signets de l'utilisateur + auteur
+//     const bookmarks = await Bookmark.find({ userId: user._id }).populate({
+//       path: "postId",
+//       populate: { path: "userId", select: "username avatarUrl" },
+//     });
+//     let bookmarkedPosts = bookmarks
+//       .map((bookmark) => bookmark.postId)
+//       // Filtre selon la catégorie/les catégories demandées
+//       .filter((post) => post);
+//     if (categories.length > 0) {
+//       bookmarkedPosts = bookmarkedPosts.filter((post) =>
+//         categories.includes(post.interest)
+//       );
+//     }
+//     // On enrichit chaque post d'un flag "isBookmarked"
+//     for (let post of bookmarkedPosts) {
+//       post.isBookmarked = true;
+//     }
+//     res.json({ result: true, posts: bookmarkedPosts });
+//   } catch (error) {
+//     res.status(400).json({ error: error.message });
+//   }
+// });
 
 // GET tous les posts d'un même centre d'intérêt
 router.get("/:token/:interest", async (req, res) => {
