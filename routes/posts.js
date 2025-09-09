@@ -201,26 +201,26 @@ router.get("/:token", async function (req, res) {
 // });
 
 // GET tous les posts d'un même centre d'intérêt
-// router.get("/:token/:interest", async (req, res) => {
-//   try {
-//     // On récupère l'utilisateur via le token
-//     const isUser = await User.findOne({ token: req.params.token });
-//     if (!isUser) {
-//       return res.status(404).send({ result: false, error: "User not found" });
-//     }
-//     // On recherche les posts concernés
-//     const interestPosts = await Post.find({ interest: req.params.interest });
-//     if (!interestPosts) {
-//       return res.status(404).send({
-//         result: false,
-//         error: "No posts for this interest",
-//       });
-//     }
-//     res.status(200).send({ result: true, posts: interestPosts });
-//   } catch (err) {
-//     res.status(500).send({ result: false, error: err.message });
-//   }
-// });
+router.get("/:token/:interest", async (req, res) => {
+  try {
+    // On récupère l'utilisateur via le token
+    const isUser = await User.findOne({ token: req.params.token });
+    if (!isUser) {
+      return res.status(404).send({ result: false, error: "User not found" });
+    }
+    // On recherche les posts concernés
+    const interestPosts = await Post.find({ interest: req.params.interest });
+    if (!interestPosts) {
+      return res.status(404).send({
+        result: false,
+        error: "No posts for this interest",
+      });
+    }
+    res.status(200).send({ result: true, posts: interestPosts });
+  } catch (err) {
+    res.status(500).send({ result: false, error: err.message });
+  }
+});
 
 /* -------------------- POST ------------------------ */
 
