@@ -6,82 +6,76 @@ const User = require("../models/users");
 const Post = require("../models/posts");
 const { checkBody } = require("../modules/checkBody");
 
-// GET tous les commentaires d'un post donné
+// Obtenir tous les commentaires d'un post donné
 router.get("/:postId", async (req, res) => {
   try {
     let postId = req.params.postId.trim();
-    
+    // Vérification format ObjectId : évite de requêter la BDD pour rien
     if (!mongoose.Types.ObjectId.isValid(postId)) {
-      return res.status(400).json({ result: false, error: "Format postId invalide" });
+      return res
+        .status(400)
+        .json({ result: false, error: "Format postId invalide" });
     }
-    
     postId = new mongoose.Types.ObjectId(postId);
-
-    // Populate sans le token d'abord
+    // On ne popule QUE username et avatar pour ne pas exposer le token immédiatement
     const comments = await Comment.find({ postId })
       .sort({ date: -1 })
       .populate("userId", "username avatarUrl");
-
-    // Récupération séparée des tokens
-    const userIds = comments.map(c => c.userId?._id).filter(Boolean);
+    // Récupère la liste des id utilisateurs présents dans les commentaires (seulement ceux valides)
+    const userIds = comments.map((c) => c.userId?._id).filter(Boolean);
+    // Va chercher uniquement le champ "token" des utilisateurs concernés (pas tout le profil)
     const usersWithTokens = await User.find(
-      { _id: { $in: userIds } }, 
+      { _id: { $in: userIds } },
       { token: 1 }
     );
-
-    // Map userId -> token
+    // On crée un tableau pour retrouver le token de chaque utilisateur à partir de son id, afin de l’intégrer facilement aux commentaires.
     const tokenMap = {};
-    usersWithTokens.forEach(user => {
+    usersWithTokens.forEach((user) => {
       tokenMap[user._id.toString()] = user.token;
     });
-
-    // Ajout des tokens aux données populées
-    const enrichedComments = comments.map(comment => {
+    // Ajoute les tokens à la réponse pour chaque commentaire
+    const enrichedComments = comments.map((comment) => {
       const commentObj = comment.toObject();
       if (commentObj.userId) {
         commentObj.userId.token = tokenMap[commentObj.userId._id.toString()];
       }
       return commentObj;
     });
-    
     res.json({ result: true, comments: enrichedComments });
   } catch (error) {
     res.status(400).json({ result: false, error: error.message });
   }
 });
 
-// POST ajout d'un commentaire sur un post
+// Envoi d'un commentaire sur un post
 router.post("/", async function (req, res) {
   try {
+    // Vérifie la présence des données obligatoires grâce au module checkBody
     if (!checkBody(req.body, ["token", "postId", "comment"])) {
-      res.json({ result: false, error: "Some mandatory data is missing" });
+      res.json({ result: false, error: "Certaines données obligatoires sont manquantes" });
       return;
     }
     // champs en entrée de la bdd
     const { token, postId, comment } = req.body;
-
-    // on récupère l'id du user connecté
-    const userObj = await User.findOne({ token: token }); // findOne donne directement un objet et non un tableau
+    // Recherche de l'utilisateur associé au token
+    const userObj = await User.findOne({ token: token });
     if (!userObj) {
-      res.json({ result: false, error: "token does not exist in database" });
+      res.json({ result: false, error: "Le jeton n'existe pas dans la base de données" });
       return;
     }
     const userId = userObj._id;
-
-    // on vérifie que le postId existe bien dans la bdd
+    // Vérifie que le postId existe bien avant d'associer le commentaire
     const isPostId = await Post.findOne({ _id: postId });
     if (!isPostId) {
       res.json({
         result: false,
-        error: "This post does not exist in database",
+        error: "Ce message n'existe pas dans la base de données",
       });
       return;
     }
-
-    // combien y a-t-il de commentaires pour l'instant ?
+    // Compte le nombre de commentaires déjà associés au post avant notre nouveau commentaire
     const nbComments = await Comment.countDocuments({ postId: postId });
-
-    // on prépare le commentaire et on l'enregistre
+    // Crée et sauvegarde le nouveau commentaire
     const newComment = new Comment({
       userId,
       postId,
@@ -89,11 +83,11 @@ router.post("/", async function (req, res) {
       date: new Date(),
     });
     await newComment.save();
-
     res.json({
       result: true,
       isCommented: true,
       newCommentId: newComment._id,
+      // retourne le nb de commentaires après insertion
       nbComments: nbComments + 1,
     });
   } catch (error) {
@@ -101,53 +95,48 @@ router.post("/", async function (req, res) {
   }
 });
 
-// DELETE suppression d'un commentaire sur un post
+// Suppression d'un commentaire sur un post
 router.delete("/", async function (req, res) {
   try {
+    // Vérifie la présence des champs attendus
     if (!checkBody(req.body, ["token", "commentId"])) {
-      res.json({ result: false, error: "Some mandatory data is missing" });
+      res.json({ result: false, error: "Certaines données obligatoires sont manquantes" });
       return;
     }
-    // champs en entrée de la bdd
+    // Champs en entrée de la bdd
     const { token, commentId } = req.body;
-
-    // on va chercher le commentaire en bdd
+    // Cherche le commentaire à supprimer
     const comment = await Comment.findOne({ _id: commentId });
     if (!comment) {
       res.json({
         result: false,
-        error: "This comment does not exist in database",
+        error: "Ce commentaire n'existe pas dans la base de données",
       });
       return;
     }
-
-    //on vérifie que l'utilisateur connecté soit bien l'auteur commentaire
-    const author = await User.findOne({ _id: comment.userId }); // findOne donne directement un objet et non un tableau
+    //On vérifie que l'utilisateur connecté soit bien l'auteur commentaire
+    const author = await User.findOne({ _id: comment.userId });
     if (!author) {
       res.json({
         result: false,
-        error: "User token does not exist in database",
+        error: "Le jeton utilisateur n'existe pas dans la base de données",
       });
       return;
     }
-
-    // on efface le commentaire de la bdd si le user est bien l'auteur du commentaire
+    // Autorise la suppression si c'est bien l'auteur (si le token correspond)
     console.log("token === author.token", token, author.token);
     if (token === author.token) {
-      console.log("Dans le if");
       await Comment.deleteOne({ _id: commentId });
     } else {
-      console.log("Dans le else");
       res.json({
         result: false,
-        error: "The connected user is not the comment's author",
+        error: "L'utilisateur connecté n'est pas l'auteur du commentaire",
       });
       return;
     }
-
     res.json({
       result: true,
-      message: "Comment successfully deleted"
+      message: "Commentaire supprimé avec succès",
     });
   } catch (error) {
     res.status(400).json({ error: error.message });

@@ -8,32 +8,32 @@ const Bookmark = require("../models/bookmarks");
 const Comment = require("../models/comments");
 const Duel = require("../models/duels");
 
-// collecte les principales statistiques de l'utilisateur
+// GET - Collecte les statistiques principales pour un utilisateur donné
 router.get("/:token", async function (req, res) {
   try {
-    // le token du user est nécessaire pour la collecte des posts, likes, bookmarks, etc.
+    // Vérifie que le token utilisateur est transmis
     if (!req.params.token) {
-      res.json({ result: false, error: "User token is missing" });
+      res.json({ result: false, error: "Le jeton utilisateur est manquant" });
       return;
     }
 
-    // on récupère l'id du user connecté
-    const userObj = await User.findOne({ token: req.params.token }); // findOne donne directement un objet et non un tableau
+    // Cherche l'utilisateur en base
+    const userObj = await User.findOne({ token: req.params.token });
     if (!userObj) {
-      res.json({ result: false, error: "token does not exist in database" });
+      res.json({ result: false, error: "Le jeton n'existe pas dans la base de données" });
       return;
     }
     const userId = userObj._id;
     const { username, avatarUrl, email, interests } = userObj;
 
-    // Initialisation de l'objet de résult
+    // Objet résultat structuré pour le front : infos, stats, points, status
     const stats = { user: {}, fromUser: {}, fromCommunity: {}, points: {} };
     stats.user.username = username;
     stats.user.avatarUrl = avatarUrl;
     stats.user.email = email;
     stats.user.interests = interests;
 
-    // nombre d'actions réalisées par l'utilisateur
+    // Actions réalisées par l'utilisateur : nombre de posts, likes, bookmarks et commentaires
     stats.fromUser.nbPosts = await Post.countDocuments({ userId: userId });
     stats.fromUser.nbLikes = await Like.countDocuments({ userId: userId });
     stats.fromUser.nbBookmarks = await Bookmark.countDocuments({
@@ -43,11 +43,11 @@ router.get("/:token", async function (req, res) {
       userId: userId,
     });
 
-    // nombre d'actions réalisées par la communauté sur les posts de l'utilisateur
-    // 1) corps de la requête qui filtrera les likes/comments/bookmarks sur les posts du user
+    // Actions de la communauté sur ses posts, en excluant ses propres actions (pour différencier l'impact)
     const rqOnUser = [
+      // Jointure pour relier Like/Bookmark/Comment à chaque post de l'utilisateur
       {
-        // on va chercher les données du post
+        // On va chercher les données du post
         $lookup: {
           from: "posts",
           localField: "postId",
@@ -56,7 +56,7 @@ router.get("/:token", async function (req, res) {
         },
       },
       {
-        // on récupère l'auteur du post
+        // On extrait l'auteur du post dans chaque action
         $project: {
           postId: 1,
           authorId: {
@@ -66,30 +66,30 @@ router.get("/:token", async function (req, res) {
         },
       },
       {
-        // on filtre sur l'auteur du post
+        // On ne garde que les actions sur les posts de l'utilisateur
         $match: {
           authorId: userId,
         },
       },
       {
-        // on exclut les actions de l'auteur sur ses propres posts (déjà comptées à l'étape 1)
+        // On exclut les actions de l'utilisateur sur ses propres posts
         $match: {
           userId: { $ne: userId }, // clef: celui qui a liké, valeur: celui qui a posté
         },
       },
     ];
 
-    // 2) collecte des informations simples
+    // Calcul des stats communautaires via aggregation
     stats.fromCommunity.nbLikes = (await Like.aggregate(rqOnUser)).length;
     stats.fromCommunity.nbBookmarks = (
       await Bookmark.aggregate(rqOnUser)
     ).length;
     stats.fromCommunity.nbComments = (await Comment.aggregate(rqOnUser)).length;
 
-    // requête spécifique pour les duels
+    // Calcul des duels remportés (posts de l'utilisateur ayant gagné un duel)
     const rqDuel = [
       {
-        // on va chercher les données du post
+        // On va chercher les données du post
         $lookup: {
           from: "posts",
           localField: "winnerPostId",
@@ -98,7 +98,7 @@ router.get("/:token", async function (req, res) {
         },
       },
       {
-        // on récupère l'auteur du post gagnant
+        // On récupère l'auteur du post gagnant
         $project: {
           winnerPostId: 1,
           winnerId: {
@@ -108,7 +108,7 @@ router.get("/:token", async function (req, res) {
         },
       },
       {
-        // on filtre sur l'auteur du post
+        // On filtre sur l'auteur du post
         $match: {
           winnerId: userId,
         },
@@ -116,7 +116,7 @@ router.get("/:token", async function (req, res) {
     ];
     stats.fromCommunity.nbWonDuels = (await Duel.aggregate(rqDuel)).length;
 
-    // on calcule le nombre de points
+    // Attribution des points selon les actions réalisées (pondération par type d'action)
     const pointsParams = {
       fromUser: { nbLikes: 1, nbComments: 2, nbBookmarks: 5, nbPosts: 10 },
       fromCommunity: {
@@ -140,7 +140,7 @@ router.get("/:token", async function (req, res) {
     );
     stats.points.total = stats.points.fromUser + stats.points.fromCommunity;
 
-    // on calcule le status de l'utilisateur
+    // Calcul du statut utilisateur selon le nombre total de points
     const statusParams = [
       { minPoints: 0, status: "Bizuth de l'échec" },
       { minPoints: 50, status: "Maladroit occasionnel" },
@@ -154,7 +154,7 @@ router.get("/:token", async function (req, res) {
         break;
       }
     }
-
+    // Renvoie toutes les statistiques calculées au front
     res.json({ result: true, stats: stats });
   } catch (error) {
     res.status(400).json({ error: error.message });

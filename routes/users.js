@@ -12,27 +12,22 @@ const checkEmail = require("../modules/checkEmail");
 
 const nodemailer = require("nodemailer");
 
-// /* GET users listing. */
-// router.get("/", async function (req, res, next) {
-//   const users = await User.find();
-//   res.json({ users: users });
-//   // res.send("respond with a resource");
-// });
-
-// POST l'utilisateur accepte la charte de bienveillance
+// POST - L'utilisateur accepte la charte de bienveillance (case à cocher à la première connexion)
 router.post("/acceptsGC", async function (req, res) {
   try {
+    // On vérifie la présence du token dans le body
     if (!checkBody(req.body, ["token"])) {
-      res.json({ result: false, error: "Token is missing" });
+      res.json({ result: false, error: "Le jeton est manquant" });
       return;
     } else {
+      // Vérifie que l'utilisateur existe
       const foundUser = await User.find({ token: req.body.token });
       if (foundUser.length === 0) {
-        res.json({ result: false, error: "User doesn't exist in database" });
+        res.json({ result: false, error: "L'utilisateur n'existe pas dans la base de données" });
         return;
       }
     }
-    // recherche l'utilisateur et enregistre l'acceptation de la CB
+    // Met à jour la propriété "hasAcceptedGC" à true pour ce user
     await User.updateOne({ token: req.body.token }, { hasAcceptedGC: true });
     res.json({ result: true });
   } catch (error) {
@@ -40,46 +35,43 @@ router.post("/acceptsGC", async function (req, res) {
   }
 });
 
-// POST - Sign up
+// POST - Inscription (signup)
 router.post("/signup", async (req, res) => {
-  console.log("From backend, signup trial"); //🔴
-  // ↩️ Data-in
+  // On récupère les infos de la requête (email, username, password)
   const { email, username, password } = req.body;
-
-  // ⚙️ Logic & ↪️ Data-out
   try {
-    // 1. Checking that all fields are filled -- Vérifier que tous les champs aient été renseignés
+    // Vérifie la complétude du formulaire
     if (!checkBody(req.body, ["email", "username", "password"])) {
       return res.status(400).send({
         result: false,
-        error: "Missing or empty fields",
+        error: "Champs manquants ou vides",
       });
     }
-    // 2. Checking that email is valid -- Vérifier que l'email soit valide
+    // Vérifie la validité de l'email
     if (!checkEmail(email)) {
       return res.status(400).send({
         result: false,
-        error: "Invalid email",
+        error: "E-mail invalide",
       });
     }
-    // 3. Checking that user is not already signed up -- Vérifier que l'utilisateur n'ait pas déjà un compte
-    const isEmailInDB = await User.findOne({ email }); // 🔴
+    // Vérifie que l'email n'est pas déjà utilisé
+    const isEmailInDB = await User.findOne({ email });
     if (isEmailInDB) {
       return res.status(400).send({
         result: false,
-        error: "User already exists",
+        error: "L'utilisateur existe déjà",
       });
     }
-    // 4. Checking that username is available -- Vérifier le nom d'utilisateur est disponible
+    // Vérifie la disponibilité du nom d'utilisateur
     let user = await User.findOne({ username });
     if (user) {
       return res.status(400).send({
         result: false,
-        error: "Username is already taken",
+        error: "Le nom d'utilisateur est déjà pris",
       });
     }
 
-    // 5. Adding user to database - Ajout de l'utilisateur à la base de donnée
+    // Création de l'utilisateur : hash du mot de passe, génération d'un token unique
     user = new User({
       username,
       email,
@@ -95,20 +87,19 @@ router.post("/signup", async (req, res) => {
     await user.save();
     res.status(201).send({
       result: true,
-      message: "User signed-up!",
+      message: "Utilisateur inscrit !",
       token: user.token,
     });
 
-    // 6. upload de la profilePic dans Cloudinary et récupération de l'url. Cette étape se fait
-    // APRÈS le retour au front pour que l'upload ne soit pas perçu par l'utilisateur
+    // Upload de la photo de profil si fournie, sinon avatar par défaut
     if (req.files?.profilePic) {
       uploadPhoto(req.files.profilePic)
         .then((profilePicUpload) =>
           User.updateOne({ _id: user._id }, { avatarUrl: profilePicUpload.url })
         )
-        .catch((err) => console.error("Photo upload failed:", err.message));
+        .catch((err) => console.error("Le téléchargement de la photo a échoué:", err.message));
     } else {
-      // s'il n'y a pas de photo, on renseigne la photo par défaut
+      // S'il n'y a pas de photo, on renseigne la photo par défaut
       await User.updateOne(
         { _id: user._id },
         {
@@ -125,38 +116,35 @@ router.post("/signup", async (req, res) => {
   }
 });
 
-// POST - Sign in
+// POST - Connexion (signin)
 router.post("/signin", async (req, res) => {
-  // ↩️ Data-in
   const { username, password } = req.body;
-
-  // ⚙️ Logic & ↪️ Data-out
   try {
-    // 1. Checking that all fields are filled -- Vérifier que tous les champs aient été renseignés
+    // Vérifie la présence des champs
     if (!checkBody(req.body, ["username", "password"])) {
       return res.status(400).send({
         result: false,
         error: "Missing or empty fields",
       });
     }
-    // 2. Checking that user exists in database  -- Vérifier que l'utilisateur ait un compte
+    // Recherche le user par username
     let user = await User.findOne({ username });
     if (!user) {
       return res.status(400).send({
         result: false,
-        error: "User not found",
+        error: "Champs manquants ou vides",
       });
     }
-    // 3. Checking that password is valid -- Vérifier que le mot de passe soit valide
+    // Vérifie le mot de passe (hashé)
     if (!bcrypt.compareSync(password, user.password)) {
       return res.status(400).send({
         result: false,
-        error: "Incorrect password",
+        error: "Mot de passe incorrect",
       });
     }
     res.status(201).send({
       result: true,
-      message: "User signed-in!",
+      message: "Utilisateur connecté !",
       token: user.token,
     });
   } catch (err) {
@@ -167,45 +155,39 @@ router.post("/signin", async (req, res) => {
   }
 });
 
-// POST - Send mail verification code to user
+// POST - Envoie un code de vérification par mail à l'utilisateur
 router.post("/send-code", async (req, res) => {
-  // ↩️ Data-in
   const { email } = req.body;
-
-  // ⚙️ Logic
   try {
-    // 1. Checking that email is valid - Vérifier que l'email soit valide
+    // Vérifie l'email
     if (!checkEmail(email)) {
       return res.status(400).send({
         result: false,
-        error: "Invalid email",
+        error: "E-mail invalide",
       });
     }
 
-    // 2. Checking user exists - Vérifier que l'utilisateur existe en bdd
+    // Vérifie que le user existe
     const user = await User.findOne({ email });
     if (!user) {
       return res.status(400).send({
         result: false,
-        error: "User not found",
+        error: "Utilisateur non trouvé",
       });
     }
 
-    // 3. Generate random 6-digit code - Générer un code à 6 chiffres aléatoire
-    // Has to be less or equal to 999,999 and greater or equal to 100,000 - doit être sup ou égal à 100,000 et inf ou égal à 999,999
+    // Génère un code aléatoire à 6 chiffres hashé
     const digitCode = Math.floor(
       Math.random() * (999999 - 100000 + 1) + 100000
     );
 
-    // 4. Add digitCode to user info in database - Ajout du code aux infos utilisateurs en bdd
-    // May be deleted if we store code in Redux store - peut être supprimé si on choisit d'enregistrer le code dans le store redux
+    // Ajout du code aux infos utilisateurs en bdd
     await User.updateOne(
       { email },
       { resetCode: bcrypt.hashSync(digitCode.toString(), 10) }
     );
-    console.log("Reset code was updated in database"); // A VIRER 🔴
 
-    // 5. Defining the email content - Définir le contenu de l'email
+    // Prépare le mail et envoie via nodemailer (Gmail)
     const mailContent = {
       from: '"EpicFails App" 👾<process.env.GMAIL_ADDRESS>',
       to: email,
@@ -213,7 +195,7 @@ router.post("/send-code", async (req, res) => {
       text: `Votre code de vérification est le suivant: ${digitCode}`,
     };
 
-    // 6. Creating a nodemailer email transporter with Gmail - Créer un transporteur d'email requis par nodemailer via Gmail
+    //Créer un transporteur d'email requis par nodemailer via Gmail
     const transporter = nodemailer.createTransport({
       service: "gmail",
       auth: {
@@ -222,15 +204,13 @@ router.post("/send-code", async (req, res) => {
       },
     });
 
-    // 7. Send mail
+    // Envoie du mail
     await transporter.sendMail(mailContent);
-    console.log(`✅ Email sent to ${email} with code ${digitCode}`); // A virer en production, security leak
 
-    // ↪️ Data-out
     res.status(201).send({
       result: true,
-      message: "Verification code sent!",
-      code: digitCode, // Utile uniquement si on stocke le code dans le store Redux plutôt qu'en bdd
+      message: "Code de vérification envoyé !",
+      code: digitCode,
     });
   } catch (err) {
     res.status(500).send({
@@ -240,41 +220,36 @@ router.post("/send-code", async (req, res) => {
   }
 });
 
-// POST - Check mail verification code
+// POST - Vérifie le code de validation reçu par mail
 router.post("/check-code", async (req, res) => {
-  // ↩️ Data-in
   const { email, digitCode } = req.body;
-
-  // ⚙️ Logic & ↪️ Data-out
   try {
-    // 1. Check the user exists
+    // 1. Vérifie que l'utilisateur existe
     const user = await User.findOne({ email });
     if (!user) {
       return res.status(400).send({
         result: false,
-        error: "User not found",
+        error: "Utilisateur non trouvé",
       });
     }
-    // 2. Check the code format is valid - vérifier que le format du code soit valide
     if (digitCode < 100000 || digitCode > 999999) {
       return res.status(400).send({
         result: false,
-        error: "Invalid code format",
+        error: "Format de code invalide",
       });
     }
-    // 3. Check the code sent by user is equal to the code saved in database - vérifier que le code renseigné par l'utilisateur soit conforme au code en bdd
+    // Compare le code envoyé au code hashé en base
     if (!bcrypt.compareSync(digitCode, user.resetCode)) {
       return res.status(400).send({
         result: false,
-        error: "Invalid code",
+        error: "Code invalide",
       });
     }
-    // 4. Resetting the resetCode property of the user to 0 and notifying frontend about password reset allowed
-    // - Remettre à 0 la propriété resetCode de l'utilisteur en bdd et notifier le frontend de l'autorisation à modifier le mdp
+    // Réinitialise la propriété resetCode si c'est OK
     await User.updateOne({ email }, { resetCode: 0 });
     res.status(202).send({
       result: true,
-      message: "Code is valid, password reset allowed",
+      message: "Code vérifié avec succès, vous pouvez maintenant définir un nouveau mot de passe.",
     });
   } catch (err) {
     res.status(500).send({
@@ -284,29 +259,26 @@ router.post("/check-code", async (req, res) => {
   }
 });
 
-// POST - Reset password
+// POST - Nouveau mot de passe (reset après validation code)
 router.post("/reset-password", async (req, res) => {
-  // ↩️ Data-in
   const { email, password } = req.body;
-
-  // ⚙️ Logic & ↪️ Data-out
   try {
-    // 1. Check user is in database - vérifier que l'utilisateur soit en base de données
+    // Vérifier que l'utilisateur soit en base de données
     const user = await User.findOne({ email });
     if (!user) {
       return res.status(400).send({
         result: false,
-        error: "User not found",
+        error: "Utilisateur non trouvé",
       });
     }
-    // 2. Updating password in database - mise à jour du mdp en bdd
+    // Met à jour le mot de passe en bdd
     await User.updateOne(
       { email },
       { password: bcrypt.hashSync(password, 10) }
     );
     res.status(201).send({
       result: true,
-      message: "Password successfully updated!",
+      message: "Mot de passe mis à jour avec succès !",
     });
   } catch (err) {
     res.status(500).send({
@@ -316,7 +288,7 @@ router.post("/reset-password", async (req, res) => {
   }
 });
 
-// PUT - update profile
+// PUT - Mise à jour du profil utilisateur
 router.put("/update-profile", async (req, res) => {
   try {
     const { token, newUsername, newEmail, newPassword } = req.body;
@@ -326,10 +298,9 @@ router.put("/update-profile", async (req, res) => {
         error: "Token manquant",
       });
     }
-    // objet pour stocker les champs à mettre à jour
+    // On crée un objet fields pour n'updater que les valeurs fournies
     const updateFields = {};
-    
-    // mise à jour de la photo de profil (si présente)
+    // Mise à jour de la photo de profil (si présente)
     if (req.files?.profilePic) {
       const profilePicUpload = await uploadPhoto(req.files.profilePic);
       if (!profilePicUpload.result) {
@@ -340,28 +311,26 @@ router.put("/update-profile", async (req, res) => {
       }
       updateFields.avatarUrl = profilePicUpload.url;
     }
-
-    // mise à jour du nom d'utilisateur (si présent)
+    // Mise à jour du nom d'utilisateur (si présent)
     if (newUsername) {
       updateFields.username = newUsername;
     }
-    // mise à jour de l'email (si présent)
+    // Mise à jour de l'email (si présent)
     if (newEmail) {
       updateFields.email = newEmail;
     }
-    // mise à jour du mot de passe (si présent)
+    // Mise à jour du mot de passe (si présent)
     if (newPassword) {
       updateFields.password = bcrypt.hashSync(newPassword, 10);
     }
-
     // Mise à jour en base de données
     const updateResult = await User.updateOne({ token: token }, updateFields);
     res.json({
       result: true,
-      message: "Profile successfully updated",
+      message: "Profil mis à jour avec succès",
     });
   } catch (error) {
-    console.error("Error while updating the profile:", error);
+    console.error("Erreur lors de la mise à jour du profil:", error);
     res.status(500).json({
       result: false,
       error: error.message,
@@ -369,19 +338,16 @@ router.put("/update-profile", async (req, res) => {
   }
 });
 
-// GET - récupère les intérêts de l'utilisateur
+// GET - Retourne les intérêts de l'utilisateur
 router.get("/interests/:token", async (req, res) => {
-  // ↩️ Data-in
   const token = req.params.token;
-
-  // ⚙️ Logic & ↪️ Data-out
   try {
-    // 1. Check user is in database - vérifier que l'utilisateur soit en base de données
+    // Vérifier que l'utilisateur soit en base de données
     const user = await User.findOne({ token });
     if (!user) {
       return res.status(400).send({
         result: false,
-        error: "User not found",
+        error: "Utilisateur non trouvé",
       });
     } else {
       res.status(201).send({
@@ -397,26 +363,23 @@ router.get("/interests/:token", async (req, res) => {
   }
 });
 
-// POST - update interests
+// POST - Mise à jour des intérêts utilisateur
 router.post("/update-interests", async (req, res) => {
-  // ↩️ Data-in
   const { token, interests } = req.body;
-
-  // ⚙️ Logic & ↪️ Data-out
   try {
-    // 1. Check user is in database - vérifier que l'utilisateur soit en base de données
+    // Vérifier que l'utilisateur soit en base de données
     const user = await User.findOne({ token });
     if (!user) {
       return res.status(400).send({
         result: false,
-        error: "User not found",
+        error: "Utilisateur non trouvé",
       });
     }
-    // 2. Updating interests in database - mise à jour des centres d'intérêt en bdd
+    // Mise à jour des centres d'intérêt en bdd
     await User.updateOne({ token }, { interests });
     res.status(201).send({
       result: true,
-      message: "Interests successfully updated!",
+      message: "Intérêts mis à jour avec succès !",
     });
   } catch (err) {
     res.status(500).send({

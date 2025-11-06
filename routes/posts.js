@@ -12,53 +12,15 @@ const { uploadPhoto } = require("../modules/uploadPhoto");
 const { sortObjectArray } = require("../modules/sortObjectArray");
 
 /* --------------------- GET ------------------------ */
-
-// 🚨‼️ => à effacer
-// GET posts créés par l'utilisateur connecté (+ avatar + états + nb likes/commentaires)
-// router.get("/myposts/:token", async (req, res) => {
-//   try {
-//     // On récupère l'utilisateur via le token
-//     const user = await User.findOne({ token: req.params.token });
-//     if (!user) {
-//       // Si l'utilisateur n'est pas trouvé, on retourne une erreur
-//       return res.json({ result: false, error: "User not found" });
-//     }
-//     // On récupère les posts créés par l'utilisateur (triés par date décroissante)
-//     const myPosts = await Post.find({ userId: user._id })
-//       .sort({ date: -1 })
-//       // Pour chaque post, on enrichit les données :
-//       .populate({ path: "userId", select: "username avatarUrl" });
-
-//     const postsWithStats = [];
-//     for (let post of myPosts) {
-//       const plainPost = post.toObject();
-//       plainPost.nbLikes = await Like.countDocuments({ postId: post._id });
-//       plainPost.nbComments = await Comment.countDocuments({ postId: post._id });
-//       plainPost.isLiked = await Like.exists({
-//         userId: user._id,
-//         postId: post._id,
-//       });
-//       plainPost.isCommented = await Comment.exists({
-//         userId: user._id,
-//         postId: post._id,
-//       });
-//       postsWithStats.push(plainPost);
-//     }
-//     res.json({ result: true, posts: postsWithStats });
-//   } catch (error) {
-//     res.status(400).json({ error: error.message });
-//   }
-// });
-
-// GET de tous les posts pour les différentes pages (agrégat limité aux champs utiles)
+// Retourne tous les posts pour un utilisateur identifié par son token
 router.get("/:token", async function (req, res) {
   try {
     if (!req.params.token) {
-      // On vérifie que le token est présent
-      res.json({ result: false, error: "User token is missing" });
+      // Vérifie que le token utilisateur est bien transmis
+      res.json({ result: false, error: "Le jeton utilisateur est manquant" });
       return;
     }
-    // Aggregate pour limiter les champs et récupérer l'auteur
+    // Agrégation pour ne récupérer que les champs utiles + l'auteur
     const rqPosts = [
       {
         $lookup: {
@@ -85,14 +47,14 @@ router.get("/:token", async function (req, res) {
     ];
     const posts = await Post.aggregate(rqPosts);
     let sortedPosts = sortObjectArray(posts, "date", -1);
-
+    // Recherche du user connecté pour gérer les likes, signets, etc.
     const userObj = await User.findOne({ token: req.params.token });
     if (!userObj) {
-      res.json({ result: false, error: "token does not exist in database" });
+      res.json({ result: false, error: "Le jeton n'existe pas dans la base de données" });
       return;
     }
     const userId = userObj._id;
-
+    // Pour chaque post : compte et état des likes, signets, commentaires
     if (sortedPosts.length > 0) {
       for (let item of sortedPosts) {
         // Gestion des likes
@@ -100,15 +62,14 @@ router.get("/:token", async function (req, res) {
         const nbLikes = likes.length;
         const isLiked = likes.some((e) => e.userId.equals(userId));
         item.nbLikes = nbLikes;
-        // Gestion des bookmarks
         item.isLiked = isLiked;
+        // Gestion des bookmarks
         const bookmarks = await Bookmark.find({ postId: item._id });
         const nbBookmarks = bookmarks.length;
         const isBookmarked = bookmarks.some((e) => e.userId.equals(userId));
         item.nbBookmarks = nbBookmarks;
-        // Gestion des comments
         item.isBookmarked = isBookmarked;
-
+        // Gestion des comments
         const comments = await Comment.find({ postId: item._id });
         const nbcomments = comments.length;
         const isCommented = comments.some((e) => e.userId.equals(userId));
@@ -116,97 +77,20 @@ router.get("/:token", async function (req, res) {
         item.isCommented = isCommented;
       }
     }
+    // Réponse : tous les posts enrichis pour l'utilisateur
     res.json({ result: true, posts: sortedPosts });
   } catch (error) {
     res.status(400).json({ error: error.message });
   }
 });
 
-// 🚨‼️ => à effacer
-// GET des posts likés d'un user, filtrés par catégorie 
-// router.get("/liked/:token", async (req, res) => {
-//   try {
-//     // On récupère l'utilisateur via le token
-//     const user = await User.findOne({ token: req.params.token });
-//     if (!user) {
-//       return res.json({ result: false, error: "User not found" });
-//     }
-//     // Gestion multi-catégorie
-//     let categories = [];
-//     if (req.query.categories) {
-//       categories = req.query.categories.split(",").map((cat) => cat.trim());
-//     } else if (req.query.category) {
-//       categories = [req.query.category];
-//     }
-//     // On récupère les likes de l'utilisateur et on "populate" sur le post + l'auteur
-//     const likes = await Like.find({ userId: user._id }).populate({
-//       path: "postId",
-//       populate: { path: "userId", select: "username avatarUrl" },
-//     });
-//     // Filtre par catégorie si besoin
-//     let likedPosts = likes.map((like) => like.postId).filter((post) => post);
-//     if (categories.length > 0) {
-//       likedPosts = likedPosts.filter((post) =>
-//         categories.includes(post.interest)
-//       );
-//     }
-//     // Enrichit des flags pour l'affichage
-//     for (let post of likedPosts) {
-//       post.nbLikes = await Like.countDocuments({ postId: post._id });
-//       post.isLiked = true;
-//     }
-//     res.json({ result: true, posts: likedPosts });
-//   } catch (error) {
-//     res.status(400).json({ error: error.message });
-//   }
-// });
-
-// GET des posts bookmarkés d'un user, filtrés par catégorie
-// router.get("/bookmarked/:token", async (req, res) => {
-//   try {
-//     // On récupère l'utilisateur via le token
-//     const user = await User.findOne({ token: req.params.token });
-//     if (!user) {
-//       return res.json({ result: false, error: "User not found" });
-//     }
-//     // Gestion multi-catégorie en query
-//     let categories = [];
-//     if (req.query.categories) {
-//       categories = req.query.categories.split(",").map((cat) => cat.trim());
-//     } else if (req.query.category) {
-//       categories = [req.query.category];
-//     }
-//     // On récupère les signets de l'utilisateur + auteur
-//     const bookmarks = await Bookmark.find({ userId: user._id }).populate({
-//       path: "postId",
-//       populate: { path: "userId", select: "username avatarUrl" },
-//     });
-//     let bookmarkedPosts = bookmarks
-//       .map((bookmark) => bookmark.postId)
-//       // Filtre selon la catégorie/les catégories demandées
-//       .filter((post) => post);
-//     if (categories.length > 0) {
-//       bookmarkedPosts = bookmarkedPosts.filter((post) =>
-//         categories.includes(post.interest)
-//       );
-//     }
-//     // On enrichit chaque post d'un flag "isBookmarked"
-//     for (let post of bookmarkedPosts) {
-//       post.isBookmarked = true;
-//     }
-//     res.json({ result: true, posts: bookmarkedPosts });
-//   } catch (error) {
-//     res.status(400).json({ error: error.message });
-//   }
-// });
-
-// GET tous les posts d'un même centre d'intérêt
+// Retourne tous les posts pour un centre d'intérêt donné, valide d'abord l'user
 router.get("/:token/:interest", async (req, res) => {
   try {
     // On récupère l'utilisateur via le token
     const isUser = await User.findOne({ token: req.params.token });
     if (!isUser) {
-      return res.status(404).send({ result: false, error: "User not found" });
+      return res.status(404).send({ result: false, error: "Utilisateur non trouvé" });
     }
     // On recherche les posts concernés
     const interestPosts = await Post.find({ interest: req.params.interest });
@@ -223,16 +107,15 @@ router.get("/:token/:interest", async (req, res) => {
 });
 
 /* -------------------- POST ------------------------ */
-
-// POST création d'un post
+// Création d'un post (upload des photos et vérif du user)
 router.post("/", async function (req, res) {
   try {
-    // Vérification des champs obligatoires
+    // Présence des champs obligatoires
     if (!checkBody(req.body, ["token", "title", "interest"])) {
-      res.json({ result: false, error: "Some mandatory data is missing" });
+      res.json({ result: false, error: "Certaines données obligatoires sont manquantes" });
       return;
     }
-    // Upload des photos
+    // Upload des photos (obligatoire et facultative)
     const actualPhotoUpload = await uploadPhoto(req.files.photoObligatoire);
     if (!actualPhotoUpload.result) {
       return res.json(actualPhotoUpload.error);
@@ -241,11 +124,11 @@ router.post("/", async function (req, res) {
     if (!expectedPhotoUpload.result) {
       return res.json(expectedPhotoUpload.error);
     }
-    // On récupère l'utilisateur grâce au token
+    // Cherche le user qui crée le post
     const { title, interest, description } = req.body;
     const userObj = await User.findOne({ token: req.body["token"] });
     if (!userObj) {
-      res.json({ result: false, error: "token does not exist in database" });
+      res.json({ result: false, error: "Le jeton n'existe pas dans la base de données" });
       return;
     }
     // Création du post
@@ -269,29 +152,29 @@ router.post("/", async function (req, res) {
 // POST toggle des likes sur un post
 router.post("/like/", async function (req, res) {
   try {
-    // Contrôle des champs
+    // Vérifie la présence du token et du postId dans la requête
     if (!checkBody(req.body, ["token", "postId"])) {
-      res.json({ result: false, error: "Some mandatory data is missing" });
+      res.json({ result: false, error: "Certaines données obligatoires sont manquantes" });
       return;
     }
-    // On récupère l'utilisateur
+    // Récupère l'utilisateur connecté via son token
     const { token, postId } = req.body;
     const userObj = await User.findOne({ token: token });
     if (!userObj) {
-      res.json({ result: false, error: "token does not exist in database" });
+      res.json({ result: false, error: "Le jeton n'existe pas dans la base de données" });
       return;
     }
-    // On vérifie le post
+    // Vérifie l'existence du post à liker
     const userId = userObj._id;
     const isPostId = await Post.findOne({ _id: postId });
     if (!isPostId) {
       res.json({
         result: false,
-        error: "This post does not exist in database",
+        error: "Ce message n'existe pas dans la base de données",
       });
       return;
     }
-    // Gestion du like
+    // Si l'utilisateur n'a pas encore liké ce post, on l'ajoute, sinon on retire le like (toggle)
     const nbLikes = await Like.countDocuments({ postId: postId });
     const isLike = await Like.findOne({ userId: userId, postId: postId });
     if (!isLike) {
@@ -312,31 +195,32 @@ router.post("/like/", async function (req, res) {
   }
 });
 
-// POST toggle des signets sur un post
+// Envoi modification des signets sur un post
 router.post("/bookmark/", async function (req, res) {
   try {
-    // Contrôle des champs
+    // Vérifie la présence du token et du postId
     if (!checkBody(req.body, ["token", "postId"])) {
-      res.json({ result: false, error: "Some mandatory data is missing" });
+      res.json({ result: false, error: "Certaines données obligatoires sont manquantes" });
       return;
     }
+    // Récupère l'utilisateur
     const { token, postId } = req.body;
     const userObj = await User.findOne({ token: token });
     if (!userObj) {
-      res.json({ result: false, error: "token does not exist in database" });
+      res.json({ result: false, error: "Le jeton n'existe pas dans la base de données" });
       return;
     }
-    // On vérifie le post
+    // Vérifie que le post existe
     const userId = userObj._id;
     const isPostId = await Post.findOne({ _id: postId });
     if (!isPostId) {
       res.json({
         result: false,
-        error: "This post does not exist in database",
+        error: "Ce message n'existe pas dans la base de données",
       });
       return;
     }
-    // Gestion du signet
+    // Si l'utilisateur n'a pas encore bookmarké, on l'ajoute, sinon on retire le bookmark (toggle)
     const isBookmark = await Bookmark.findOne({
       userId: userId,
       postId: postId,
@@ -361,29 +245,29 @@ router.post("/bookmark/", async function (req, res) {
 // POST ajout d'un commentaire sur un post
 router.post("/comment/", async function (req, res) {
   try {
-    // Contrôle des champs
+    // Vérifie la présence du token, du postId et du commentaire
     if (!checkBody(req.body, ["token", "postId", "comment"])) {
-      res.json({ result: false, error: "Some mandatory data is missing" });
+      res.json({ result: false, error: "Certaines données obligatoires sont manquantes" });
       return;
     }
-    // On récupère l'utilisateur
+    // Récupère l'utilisateur
     const { token, postId, comment } = req.body;
     const userObj = await User.findOne({ token: token });
     if (!userObj) {
-      res.json({ result: false, error: "token does not exist in database" });
+      res.json({ result: false, error: "Le jeton n'existe pas dans la base de données" });
       return;
     }
-    // On vérifie le post
+    // Vérifie que le post existe
     const userId = userObj._id;
     const isPostId = await Post.findOne({ _id: postId });
     if (!isPostId) {
       res.json({
         result: false,
-        error: "This post does not exist in database",
+        error: "Ce message n'existe pas dans la base de données",
       });
       return;
     }
-    // Création du commentaire
+    // Créé et sauvegarde le commentaire, puis retourne le nombre de commentaires actualisé
     const nbComments = await Comment.countDocuments({ postId: postId });
     const newComment = new Comment({
       userId,
@@ -405,28 +289,28 @@ router.post("/comment/", async function (req, res) {
 
 /* ------------------- DELETE ----------------------- */
 
-// DELETE suppression d'un post
+// Suppression d'un post : nécessite d'être l'auteur
 router.delete("/", async function (req, res) {
   try {
-    // Contrôle des champs
+    // Vérifie que le token et le postId sont présents
     if (!checkBody(req.body, ["token", "postId"])) {
-      res.json({ result: false, error: "Token and post ID are required" });
+      res.json({ result: false, error: "Un jeton et un identifiant de publication sont requis" });
       return;
     }
-    // On récupère l'utilisateur
+    // Récupère l'utilisateur
     const { token, postId } = req.body;
     const userObj = await User.findOne({ token: token });
     if (!userObj) {
       res.json({ result: false, error: "Invalid token" });
       return;
     }
-    // On vérifie le post
+    // Récupère le post à supprimer et vérifie l'autorisation : seul l'auteur peut 
     const userId = userObj._id;
     const post = await Post.findOne({ _id: postId });
     if (!post) {
       res.json({
         result: false,
-        error: "This post does not exist in database",
+        error: "Ce message n'existe pas dans la base de données",
       });
       return;
     }
@@ -434,19 +318,19 @@ router.delete("/", async function (req, res) {
     if (!post.userId.equals(userId)) {
       res.json({
         result: false,
-        error: "You are not authorized to delete this post",
+        error: "Vous n'êtes pas autorisé à supprimer ce message",
       });
       return;
     }
-    // Suppression du post et des relations associées
+    // Supprime le post et toutes ses relations associées (likes, signets, commentaires, duels où il est gagnant)
     await Post.deleteOne({ _id: postId });
     await Like.deleteMany({ postId: postId });
     await Bookmark.deleteMany({ postId: postId });
     await Comment.deleteMany({ postId: postId });
     await Duel.deleteMany({ winnerPostId: postId });
-    res.json({ result: true, message: "Post deleted successfully" });
+    res.json({ result: true, message: "Message supprimé avec succès" });
   } catch (error) {
-    console.error("Error deleting post:", error);
+    console.error("Erreur lors de la suppression du message:", error);
     res.status(500).json({ result: false, error: error.message });
   }
 });

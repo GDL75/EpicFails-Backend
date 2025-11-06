@@ -8,12 +8,11 @@ const Bookmark = require("../models/bookmarks");
 const Comment = require("../models/comments");
 const { sortObjectArray } = require("../modules/sortObjectArray");
 
-// Recherche des fails remplissant les critères. Ce devrait être une route GET mais comme
-// il y a trop de paramètres, il est plus simple d'utiliser une POST (objet en entrée)
-// On rajoute ensuite les nombres de likes, de commentaires et de signets
+// Recherche avancée des posts ("fails") selon plusieurs critères fournis en body
+// Route POST utilisée car il y a trop de paramètres pour une requête GET classique
 router.post("/", async function (req, res) {
   try {
-    // on récupère les critères de recherche du front
+    // Récupère tous les critères de recherche envoyés par le front
     const {
       token,
       category = "",
@@ -23,15 +22,13 @@ router.post("/", async function (req, res) {
       inDescription = false,
       inComment = false,
     } = req.body;
-    
-    // le token du user est nécessaire pour l'affichage des likes, bookmarks et comments
+    // On vérifie que le token est transmis (nécessaire pour afficher likes, bookmarks, comments)
     if (!token) {
       res.json({ result: false, error: "User token is missing" });
       return;
     }
-    
-    // on va chercher les posts dans la bdd. Requête aggregate collée depuis Compass
-    // (plus efficace qu'un .populate() et permet de choisir les clefs à garder)
+
+    // Pipeline d'agrégation : récupère les posts en ajoutant les infos de leur auteur (username, avatar)
     const rqPosts = [
       {
         $lookup: {
@@ -65,8 +62,7 @@ router.post("/", async function (req, res) {
       },
     ];
     
-    // on ajout ensuite les différents critères, selon qu'ils sont utilisés ou non
-    // 1) la catégorie
+    // Ajoute la condition sur la catégorie si précisée
     if (category !== "") {
       rqPosts.push({
         $match: {
@@ -74,7 +70,7 @@ router.post("/", async function (req, res) {
         },
       });
     }
-    // 2) la recherche par chaîne de caractère dans différents champs
+    // Ajoute la/les conditions de recherche textuelle dans les différents champs cochés par l'utilisateur
     if (
       searchedText !== "" && // texte non vide
       (inUser || inTitle || inDescription || inComment)  // au moins une case cochée
@@ -84,29 +80,28 @@ router.post("/", async function (req, res) {
       inTitle && (searchKeys.title = { $regex: searchedText, $options: "i" });
       inDescription &&
         (searchKeys.description = { $regex: searchedText, $options: "i" });
-      // on met à jour le pipeline de la requête
+      // Ajoute le filtre au pipeline d'agrégation
       rqPosts.push({ $match: searchKeys });
-      // ⚠️ 🚨 il manque les commentaires (un peu plus compliqués...)
+      // ⚠️ 🚨À ce stade, la recherche sur les commentaires n'est pas encore implémentée (note pour évolution du projet)
     }
 
-    // console.log("rqPosts", rqPosts);
+    // Exécute la requête d'agrégation
     const posts = await Post.aggregate(rqPosts);
-
-    // tri par date, les plus récents en premier
+    // Trie les posts par date (les plus récents d'abord)
     let sortedPosts = sortObjectArray(posts, "date", -1);
 
-    // on récupère l'id du user connecté pour compter les likes, bookmarks et commentaires
-    const userObj = await User.findOne({ token: token }); // findOne donne directement un objet et non un tableau
+    // On récupère l'id du user connecté pour calculer les likes, signets, commentaires perso
+    const userObj = await User.findOne({ token: token });
     if (!userObj) {
-      res.json({ result: false, error: "token does not exist in database" });
+      res.json({ result: false, error: "Le jeton n'existe pas dans la base de données" });
       return;
     }
     const userId = userObj._id;
 
-    // on va chercher les likes, les bookmarks et les commentaires
+    // Pour chaque post, ajoute le nombre total et l'état pour likes, signets et commentaires du user
     if (sortedPosts.length > 0) {
       for (let item of sortedPosts) {
-        // les likes
+        // Likes : nb et si liké par user
         const likes = await Like.find({ postId: item._id });
         const nbLikes = likes.length;
         const isLiked = likes.some((e) => e.userId.equals(userId));
@@ -114,7 +109,7 @@ router.post("/", async function (req, res) {
         item.nbLikes = nbLikes;
         item.isLiked = isLiked;
 
-        // les bookmarks
+        // Signets : nb et si déjà bookmarké
         const bookmarks = await Bookmark.find({ postId: item._id });
         const nbBookmarks = bookmarks.length;
         const isBookmarked = bookmarks.some((e) => e.userId.equals(userId));
@@ -122,7 +117,7 @@ router.post("/", async function (req, res) {
         item.nbBookmarks = nbBookmarks;
         item.isBookmarked = isBookmarked;
 
-        // les commentaires
+        // Commentaires : nb et si déjà commenté
         const comments = await Comment.find({ postId: item._id });
         const nbcomments = comments.length;
         const isCommented = comments.some((e) => e.userId.equals(userId));
@@ -131,6 +126,7 @@ router.post("/", async function (req, res) {
         item.isCommented = isCommented;
       }
     }
+    // Réponse finale : posts enrichis des stats pour l'utilisateur
     res.json({ result: true, posts: sortedPosts });
   } catch (error) {
     res.status(400).json({ error: error.message });
