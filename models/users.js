@@ -20,6 +20,7 @@ const userSchema = mongoose.Schema({
     default:
       "https://res.cloudinary.com/dtnbiqfov/image/upload/v1755015141/953789_bkxjio.jpg",
   },
+  reportCount: { type: Number, default: 0 },
   // Statut/description utilisateur
   status: String,
   // Centres d'intérêt (enum pour limiter aux thèmes définis par l'app)
