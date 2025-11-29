@@ -11,7 +11,6 @@ const Duel = require("../models/duels");
 // GET - Collecte les statistiques principales pour un utilisateur donné
 router.get("/:token", async function (req, res) {
   try {
-    // Vérifie que le token utilisateur est transmis
     if (!req.params.token) {
       res.json({ result: false, error: "Le jeton utilisateur est manquant" });
       return;
@@ -45,9 +44,7 @@ router.get("/:token", async function (req, res) {
 
     // Actions de la communauté sur ses posts, en excluant ses propres actions (pour différencier l'impact)
     const rqOnUser = [
-      // Jointure pour relier Like/Bookmark/Comment à chaque post de l'utilisateur
       {
-        // On va chercher les données du post
         $lookup: {
           from: "posts",
           localField: "postId",
@@ -56,7 +53,6 @@ router.get("/:token", async function (req, res) {
         },
       },
       {
-        // On extrait l'auteur du post dans chaque action
         $project: {
           postId: 1,
           authorId: {
@@ -66,15 +62,13 @@ router.get("/:token", async function (req, res) {
         },
       },
       {
-        // On ne garde que les actions sur les posts de l'utilisateur
         $match: {
           authorId: userId,
         },
       },
       {
-        // On exclut les actions de l'utilisateur sur ses propres posts
         $match: {
-          userId: { $ne: userId }, // clef: celui qui a liké, valeur: celui qui a posté
+          userId: { $ne: userId },
         },
       },
     ];
@@ -89,7 +83,6 @@ router.get("/:token", async function (req, res) {
     // Calcul des duels remportés (posts de l'utilisateur ayant gagné un duel)
     const rqDuel = [
       {
-        // On va chercher les données du post
         $lookup: {
           from: "posts",
           localField: "winnerPostId",
@@ -98,7 +91,6 @@ router.get("/:token", async function (req, res) {
         },
       },
       {
-        // On récupère l'auteur du post gagnant
         $project: {
           winnerPostId: 1,
           winnerId: {
@@ -108,7 +100,6 @@ router.get("/:token", async function (req, res) {
         },
       },
       {
-        // On filtre sur l'auteur du post
         $match: {
           winnerId: userId,
         },

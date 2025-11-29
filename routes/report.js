@@ -17,7 +17,6 @@ router.post("/", async (req, res) => {
     // Retrouver l'utilisateur responsable du signalement via le token
     const user = await User.findOne({ token });
     if (!user) {
-      // Si pas trouvé, on renvoie une erreur
       return res
         .status(400)
         .json({ result: false, error: "Utilisateur non trouvé" });

@@ -10,7 +10,6 @@ it("GET /stats/PpnNwBt53PUced_mgP6R_B0u2RoQu2LV", async () => {
   expect(res.body.stats.fromUser.nbPosts).toBe(2);
 });
 
-// pour éviter le message d'alerte en jaune à l'issue du test
 afterAll(async () => {
-  await mongoose.connection.close(); // ferme la connexion DB
+  await mongoose.connection.close();
 });

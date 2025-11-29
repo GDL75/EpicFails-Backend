@@ -22,13 +22,12 @@ router.post("/", async function (req, res) {
       inDescription = false,
       inComment = false,
     } = req.body;
-    // On vérifie que le token est transmis (nécessaire pour afficher likes, bookmarks, comments)
     if (!token) {
       res.json({ result: false, error: "User token is missing" });
       return;
     }
 
-    // Pipeline d'agrégation : récupère les posts en ajoutant les infos de leur auteur (username, avatar)
+    // Récupère les posts en ajoutant les infos de leur auteur (username, avatar)
     const rqPosts = [
       {
         $lookup: {
@@ -41,7 +40,7 @@ router.post("/", async function (req, res) {
       },
       {
         $project: {
-          // on élimine les autres infos du user (i.e. on ne garde que username et avatar)
+          // on élimine les autres infos du user
           _id: 1,
           username: {
             $arrayElemAt: ["$user.username", 0],
@@ -80,17 +79,13 @@ router.post("/", async function (req, res) {
       inTitle && (searchKeys.title = { $regex: searchedText, $options: "i" });
       inDescription &&
         (searchKeys.description = { $regex: searchedText, $options: "i" });
-      // Ajoute le filtre au pipeline d'agrégation
       rqPosts.push({ $match: searchKeys });
       // ⚠️ 🚨À ce stade, la recherche sur les commentaires n'est pas encore implémentée (note pour évolution du projet)
     }
 
     // Exécute la requête d'agrégation
     const posts = await Post.aggregate(rqPosts);
-    // Trie les posts par date (les plus récents d'abord)
     let sortedPosts = sortObjectArray(posts, "date", -1);
-
-    // On récupère l'id du user connecté pour calculer les likes, signets, commentaires perso
     const userObj = await User.findOne({ token: token });
     if (!userObj) {
       res.json({ result: false, error: "Le jeton n'existe pas dans la base de données" });
@@ -101,7 +96,6 @@ router.post("/", async function (req, res) {
     // Pour chaque post, ajoute le nombre total et l'état pour likes, signets et commentaires du user
     if (sortedPosts.length > 0) {
       for (let item of sortedPosts) {
-        // Likes : nb et si liké par user
         const likes = await Like.find({ postId: item._id });
         const nbLikes = likes.length;
         const isLiked = likes.some((e) => e.userId.equals(userId));
@@ -126,7 +120,6 @@ router.post("/", async function (req, res) {
         item.isCommented = isCommented;
       }
     }
-    // Réponse finale : posts enrichis des stats pour l'utilisateur
     res.json({ result: true, posts: sortedPosts });
   } catch (error) {
     res.status(400).json({ error: error.message });

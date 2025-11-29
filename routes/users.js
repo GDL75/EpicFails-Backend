@@ -15,12 +15,10 @@ const nodemailer = require("nodemailer");
 // POST - L'utilisateur accepte la charte de bienveillance (case à cocher à la première connexion)
 router.post("/acceptsGC", async function (req, res) {
   try {
-    // On vérifie la présence du token dans le body
     if (!checkBody(req.body, ["token"])) {
       res.json({ result: false, error: "Le jeton est manquant" });
       return;
     } else {
-      // Vérifie que l'utilisateur existe
       const foundUser = await User.find({ token: req.body.token });
       if (foundUser.length === 0) {
         res.json({ result: false, error: "L'utilisateur n'existe pas dans la base de données" });
@@ -37,7 +35,6 @@ router.post("/acceptsGC", async function (req, res) {
 
 // POST - Inscription (signup)
 router.post("/signup", async (req, res) => {
-  // On récupère les infos de la requête (email, username, password)
   const { email, username, password } = req.body;
   try {
     // Vérifie la complétude du formulaire
@@ -159,7 +156,6 @@ router.post("/signin", async (req, res) => {
 router.post("/send-code", async (req, res) => {
   const { email } = req.body;
   try {
-    // Vérifie l'email
     if (!checkEmail(email)) {
       return res.status(400).send({
         result: false,
@@ -180,8 +176,6 @@ router.post("/send-code", async (req, res) => {
     const digitCode = Math.floor(
       Math.random() * (999999 - 100000 + 1) + 100000
     );
-
-    // Ajout du code aux infos utilisateurs en bdd
     await User.updateOne(
       { email },
       { resetCode: bcrypt.hashSync(digitCode.toString(), 10) }
@@ -224,7 +218,6 @@ router.post("/send-code", async (req, res) => {
 router.post("/check-code", async (req, res) => {
   const { email, digitCode } = req.body;
   try {
-    // 1. Vérifie que l'utilisateur existe
     const user = await User.findOne({ email });
     if (!user) {
       return res.status(400).send({
@@ -238,14 +231,12 @@ router.post("/check-code", async (req, res) => {
         error: "Format de code invalide",
       });
     }
-    // Compare le code envoyé au code hashé en base
     if (!bcrypt.compareSync(digitCode, user.resetCode)) {
       return res.status(400).send({
         result: false,
         error: "Code invalide",
       });
     }
-    // Réinitialise la propriété resetCode si c'est OK
     await User.updateOne({ email }, { resetCode: 0 });
     res.status(202).send({
       result: true,
@@ -263,7 +254,6 @@ router.post("/check-code", async (req, res) => {
 router.post("/reset-password", async (req, res) => {
   const { email, password } = req.body;
   try {
-    // Vérifier que l'utilisateur soit en base de données
     const user = await User.findOne({ email });
     if (!user) {
       return res.status(400).send({
@@ -271,7 +261,6 @@ router.post("/reset-password", async (req, res) => {
         error: "Utilisateur non trouvé",
       });
     }
-    // Met à jour le mot de passe en bdd
     await User.updateOne(
       { email },
       { password: bcrypt.hashSync(password, 10) }
@@ -298,9 +287,7 @@ router.put("/update-profile", async (req, res) => {
         error: "Token manquant",
       });
     }
-    // On crée un objet fields pour n'updater que les valeurs fournies
     const updateFields = {};
-    // Mise à jour de la photo de profil (si présente)
     if (req.files?.profilePic) {
       const profilePicUpload = await uploadPhoto(req.files.profilePic);
       if (!profilePicUpload.result) {
@@ -311,19 +298,15 @@ router.put("/update-profile", async (req, res) => {
       }
       updateFields.avatarUrl = profilePicUpload.url;
     }
-    // Mise à jour du nom d'utilisateur (si présent)
     if (newUsername) {
       updateFields.username = newUsername;
     }
-    // Mise à jour de l'email (si présent)
     if (newEmail) {
       updateFields.email = newEmail;
     }
-    // Mise à jour du mot de passe (si présent)
     if (newPassword) {
       updateFields.password = bcrypt.hashSync(newPassword, 10);
     }
-    // Mise à jour en base de données
     const updateResult = await User.updateOne({ token: token }, updateFields);
     res.json({
       result: true,
@@ -342,7 +325,6 @@ router.put("/update-profile", async (req, res) => {
 router.get("/interests/:token", async (req, res) => {
   const token = req.params.token;
   try {
-    // Vérifier que l'utilisateur soit en base de données
     const user = await User.findOne({ token });
     if (!user) {
       return res.status(400).send({
@@ -367,7 +349,6 @@ router.get("/interests/:token", async (req, res) => {
 router.post("/update-interests", async (req, res) => {
   const { token, interests } = req.body;
   try {
-    // Vérifier que l'utilisateur soit en base de données
     const user = await User.findOne({ token });
     if (!user) {
       return res.status(400).send({
@@ -375,7 +356,6 @@ router.post("/update-interests", async (req, res) => {
         error: "Utilisateur non trouvé",
       });
     }
-    // Mise à jour des centres d'intérêt en bdd
     await User.updateOne({ token }, { interests });
     res.status(201).send({
       result: true,

@@ -10,7 +10,6 @@ const { checkBody } = require("../modules/checkBody");
 router.get("/:postId", async (req, res) => {
   try {
     let postId = req.params.postId.trim();
-    // Vérification format ObjectId : évite de requêter la BDD pour rien
     if (!mongoose.Types.ObjectId.isValid(postId)) {
       return res
         .status(400)
@@ -21,14 +20,12 @@ router.get("/:postId", async (req, res) => {
     const comments = await Comment.find({ postId })
       .sort({ date: -1 })
       .populate("userId", "username avatarUrl");
-    // Récupère la liste des id utilisateurs présents dans les commentaires (seulement ceux valides)
     const userIds = comments.map((c) => c.userId?._id).filter(Boolean);
     // Va chercher uniquement le champ "token" des utilisateurs concernés (pas tout le profil)
     const usersWithTokens = await User.find(
       { _id: { $in: userIds } },
       { token: 1 }
     );
-    // On crée un tableau pour retrouver le token de chaque utilisateur à partir de son id, afin de l’intégrer facilement aux commentaires.
     const tokenMap = {};
     usersWithTokens.forEach((user) => {
       tokenMap[user._id.toString()] = user.token;
@@ -55,7 +52,6 @@ router.post("/", async function (req, res) {
       res.json({ result: false, error: "Certaines données obligatoires sont manquantes" });
       return;
     }
-    // champs en entrée de la bdd
     const { token, postId, comment } = req.body;
     // Recherche de l'utilisateur associé au token
     const userObj = await User.findOne({ token: token });
@@ -64,7 +60,6 @@ router.post("/", async function (req, res) {
       return;
     }
     const userId = userObj._id;
-    // Vérifie que le postId existe bien avant d'associer le commentaire
     const isPostId = await Post.findOne({ _id: postId });
     if (!isPostId) {
       res.json({
@@ -73,9 +68,7 @@ router.post("/", async function (req, res) {
       });
       return;
     }
-    // Compte le nombre de commentaires déjà associés au post avant notre nouveau commentaire
     const nbComments = await Comment.countDocuments({ postId: postId });
-    // Crée et sauvegarde le nouveau commentaire
     const newComment = new Comment({
       userId,
       postId,
@@ -87,7 +80,6 @@ router.post("/", async function (req, res) {
       result: true,
       isCommented: true,
       newCommentId: newComment._id,
-      // retourne le nb de commentaires après insertion
       nbComments: nbComments + 1,
     });
   } catch (error) {
@@ -103,7 +95,6 @@ router.delete("/", async function (req, res) {
       res.json({ result: false, error: "Certaines données obligatoires sont manquantes" });
       return;
     }
-    // Champs en entrée de la bdd
     const { token, commentId } = req.body;
     // Cherche le commentaire à supprimer
     const comment = await Comment.findOne({ _id: commentId });
@@ -124,7 +115,6 @@ router.delete("/", async function (req, res) {
       return;
     }
     // Autorise la suppression si c'est bien l'auteur (si le token correspond)
-    console.log("token === author.token", token, author.token);
     if (token === author.token) {
       await Comment.deleteOne({ _id: commentId });
     } else {
